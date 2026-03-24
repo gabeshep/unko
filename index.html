@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Wander — Find your next adventure</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:        #0A0906;
+      --surface:   #16120D;
+      --surface-2: #201A12;
+      --gold:      #F0A500;
+      --cream:     #F5ECD8;
+      --muted:     #6B6050;
+      --do:        #2BBFB0;
+      --eat:       #FF6B35;
+      --see:       #A78BFA;
+      --radius:    22px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--cream);
+      overflow: hidden;
+    }
+
+    /* Subtle grain overlay for depth */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 999;
+    }
+
+    /* Ambient background glow */
+    body::before {
+      content: '';
+      position: fixed;
+      width: 600px; height: 600px;
+      top: -200px; left: 50%;
+      transform: translateX(-50%);
+      background: radial-gradient(circle, rgba(240,165,0,0.06) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    #app {
+      position: relative;
+      z-index: 1;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      max-width: 480px;
+      margin: 0 auto;
+      padding: 28px 20px 24px;
+      gap: 16px;
+    }
+
+    /* ── HEADER ─────────────────────────────── */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .logo {
+      font-family: 'Playfair Display', serif;
+      font-size: 24px;
+      font-weight: 900;
+      letter-spacing: 0.15em;
+      color: var(--gold);
+      text-transform: uppercase;
+    }
+
+    .location-badge {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 12px;
+      color: var(--muted);
+      max-width: 160px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .location-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--muted);
+      flex-shrink: 0;
+      transition: background 0.3s;
+    }
+    .location-dot.active { background: #4ADE80; }
+
+    /* ── CATEGORY BUTTONS ────────────────────── */
+    .categories {
+      display: flex;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .cat-btn {
+      flex: 1;
+      padding: 13px 8px 11px;
+      border-radius: 16px;
+      border: 1.5px solid var(--surface-2);
+      background: var(--surface);
+      color: var(--muted);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.18s ease;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .cat-btn .icon { font-size: 22px; line-height: 1; }
+    .cat-btn:hover { border-color: var(--muted); color: var(--cream); background: var(--surface-2); }
+
+    .cat-btn.active[data-cat="do"]  { background: rgba(43,191,176,0.1);  border-color: var(--do);  color: var(--do);  }
+    .cat-btn.active[data-cat="eat"] { background: rgba(255,107,53,0.1);  border-color: var(--eat); color: var(--eat); }
+    .cat-btn.active[data-cat="see"] { background: rgba(167,139,250,0.1); border-color: var(--see); color: var(--see); }
+
+    /* ── CARD AREA ───────────────────────────── */
+    .card-area {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Start screen */
+    .start-screen {
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      padding: 0 16px;
+    }
+
+    .compass-wrap {
+      position: relative;
+      width: 80px; height: 80px;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    .compass-ring {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      border: 1.5px solid rgba(240,165,0,0.2);
+      animation: pulse-ring 2.5s ease-in-out infinite;
+    }
+    .compass-ring:nth-child(2) { inset: -10px; border-color: rgba(240,165,0,0.1); animation-delay: 0.5s; }
+    .compass-ring:nth-child(3) { inset: -20px; border-color: rgba(240,165,0,0.06); animation-delay: 1s; }
+
+    @keyframes pulse-ring {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: 0.4; transform: scale(1.05); }
+    }
+
+    .compass-emoji { font-size: 42px; position: relative; z-index: 1; }
+
+    .start-tagline {
+      font-family: 'Playfair Display', serif;
+      font-size: 28px;
+      font-weight: 700;
+      line-height: 1.2;
+      color: var(--cream);
+    }
+
+    .start-sub {
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1.65;
+      max-width: 260px;
+    }
+
+    /* Suggestion card */
+    .suggestion-card {
+      width: 100%;
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 30px 26px 28px;
+      border: 1px solid var(--surface-2);
+      position: relative;
+      overflow: hidden;
+      animation: card-in 0.32s cubic-bezier(0.34, 1.4, 0.64, 1) forwards;
+    }
+
+    @keyframes card-in {
+      from { opacity: 0; transform: translateY(28px) scale(0.95); }
+      to   { opacity: 1; transform: translateY(0)   scale(1);    }
+    }
+
+    .card-exit {
+      animation: card-out 0.22s ease-in forwards !important;
+    }
+
+    @keyframes card-out {
+      from { opacity: 1; transform: translateY(0)    scale(1);    }
+      to   { opacity: 0; transform: translateY(-24px) scale(0.96); }
+    }
+
+    .card-glow {
+      position: absolute;
+      top: -40px; right: -40px;
+      width: 180px; height: 180px;
+      border-radius: 50%;
+      filter: blur(50px);
+      opacity: 0.18;
+      pointer-events: none;
+    }
+
+    .card-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 11px;
+      border-radius: 100px;
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      margin-bottom: 18px;
+    }
+
+    .badge-do  { background: rgba(43,191,176,0.12);  color: var(--do);  }
+    .badge-eat { background: rgba(255,107,53,0.12);  color: var(--eat); }
+    .badge-see { background: rgba(167,139,250,0.12); color: var(--see); }
+
+    .card-name {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(26px, 6vw, 36px);
+      font-weight: 700;
+      line-height: 1.15;
+      color: var(--cream);
+      margin-bottom: 14px;
+      letter-spacing: -0.01em;
+    }
+
+    .card-meta {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .card-meta span { display: flex; align-items: center; gap: 5px; }
+
+    .card-address {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.55;
+      margin-top: 4px;
+    }
+
+    /* Loading */
+    .loading-card {
+      width: 100%;
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 52px 28px;
+      border: 1px solid var(--surface-2);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 18px;
+    }
+
+    .spinner {
+      width: 36px; height: 36px;
+      border: 2px solid var(--surface-2);
+      border-top-color: var(--gold);
+      border-radius: 50%;
+      animation: spin 0.75s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .loading-msg {
+      font-size: 14px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    /* Error */
+    .error-card {
+      width: 100%;
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 40px 28px;
+      border: 1px solid var(--surface-2);
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .error-icon { font-size: 44px; }
+    .error-msg  { font-size: 14px; color: var(--muted); line-height: 1.65; max-width: 280px; }
+
+    /* ── ACTIONS ─────────────────────────────── */
+    .actions {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .btn-go {
+      width: 100%;
+      padding: 18px;
+      border-radius: 16px;
+      border: none;
+      background: var(--gold);
+      color: #0A0906;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 16px;
+      font-weight: 500;
+      letter-spacing: 0.02em;
+      cursor: pointer;
+      transition: all 0.18s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn-go:hover  { background: #FFB800; transform: translateY(-1px); }
+    .btn-go:active { transform: translateY(0); background: #d99500; }
+    .btn-go:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+
+    .btn-nah {
+      width: 100%;
+      padding: 15px;
+      border-radius: 16px;
+      border: 1.5px solid var(--surface-2);
+      background: transparent;
+      color: var(--muted);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 15px;
+      font-weight: 400;
+      cursor: pointer;
+      transition: all 0.18s ease;
+    }
+
+    .btn-nah:hover  { border-color: var(--muted); color: var(--cream); }
+    .btn-nah:active { background: var(--surface); }
+    .btn-nah:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    .nearby-count {
+      text-align: center;
+      font-size: 12px;
+      color: var(--muted);
+      letter-spacing: 0.02em;
+    }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <!-- Header -->
+  <header class="header">
+    <div class="logo">Wander</div>
+    <div class="location-badge">
+      <div class="location-dot" id="locationDot"></div>
+      <span id="locationText">Locating you…</span>
+    </div>
+  </header>
+
+  <!-- Category buttons — always visible -->
+  <div class="categories">
+    <button class="cat-btn" data-cat="do" onclick="toggleCategory('do')">
+      <span class="icon">🎯</span>
+      <span>Do</span>
+    </button>
+    <button class="cat-btn" data-cat="eat" onclick="toggleCategory('eat')">
+      <span class="icon">🍽️</span>
+      <span>Eat</span>
+    </button>
+    <button class="cat-btn" data-cat="see" onclick="toggleCategory('see')">
+      <span class="icon">👁️</span>
+      <span>See</span>
+    </button>
+  </div>
+
+  <!-- Main card area -->
+  <div class="card-area" id="cardArea">
+    <div class="start-screen" id="startScreen">
+      <div class="compass-wrap">
+        <div class="compass-ring"></div>
+        <div class="compass-ring"></div>
+        <div class="compass-ring"></div>
+        <span class="compass-emoji">🧭</span>
+      </div>
+      <div class="start-tagline">What's your next adventure?</div>
+      <div class="start-sub">Pick a category above, or leave it open to be surprised.</div>
+    </div>
+  </div>
+
+  <!-- Actions -->
+  <div class="actions">
+    <button class="btn-go" id="findBtn" onclick="handleFindBtn()">
+      Find Something ✦
+    </button>
+    <button class="btn-nah hidden" id="nahBtn" onclick="nextSuggestion()">
+      Nah, what else →
+    </button>
+    <div class="nearby-count hidden" id="nearbyCount"></div>
+  </div>
+
+</div>
+<script>
+  // ─────────────────────────────────────────────────────────
+  // STATE
+  // ─────────────────────────────────────────────────────────
+  const state = {
+    lat: null,
+    lon: null,
+    locationReady: false,
+    activeCategory: null,   // null | 'do' | 'eat' | 'see'
+    pool: [],               // normalized suggestion objects
+    index: 0,
+    browsing: false,        // true once first results are shown
+    loading: false
+  };
+
+  // ─────────────────────────────────────────────────────────
+  // GEOLOCATION
+  // ─────────────────────────────────────────────────────────
+  function initLocation() {
+    if (!navigator.geolocation) {
+      setLocationLabel('Location unavailable', false);
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        state.lat = pos.coords.latitude;
+        state.lon = pos.coords.longitude;
+        state.locationReady = true;
+        document.getElementById('locationDot').classList.add('active');
+        setLocationLabel('Location found', true);
+
+        // Try to get a human-readable city name
+        try {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${state.lat}&lon=${state.lon}&zoom=12`
+          );
+          const data = await res.json();
+          const city = data.address?.city
+            || data.address?.town
+            || data.address?.village
+            || data.address?.county;
+          if (city) setLocationLabel(city, true);
+        } catch { /* non-critical, silently ignore */ }
+      },
+      () => {
+        setLocationLabel('Enable location', false);
+        showError('Location access is needed to find things near you.<br>Please allow location and refresh the page.');
+      },
+      { enableHighAccuracy: false, timeout: 12000 }
+    );
+  }
+
+  function setLocationLabel(text, active) {
+    document.getElementById('locationText').textContent = text;
+    document.getElementById('locationDot').classList.toggle('active', active);
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // CATEGORY TOGGLE
+  // ─────────────────────────────────────────────────────────
+  function toggleCategory(cat) {
+    const btn = document.querySelector(`[data-cat="${cat}"]`);
+    const alreadyActive = state.activeCategory === cat;
+
+    // Deselect all first
+    document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+
+    if (alreadyActive) {
+      state.activeCategory = null;
+    } else {
+      state.activeCategory = cat;
+      btn.classList.add('active');
+    }
+
+    // If already browsing, reset pool and re-fetch for the new filter
+    if (state.browsing) {
+      state.pool  = [];
+      state.index = 0;
+      fetchSuggestions();
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // OVERPASS QUERIES — no API key needed, runs in browser
+  // ─────────────────────────────────────────────────────────
+  const RADII = { eat: 1500, see: 2500, do: 3000 };
+
+  const OVERPASS_ENDPOINT = 'https://overpass-api.de/api/interpreter';
+
+  function buildQuery(cat, lat, lon) {
+    const r = RADII[cat];
+    const queries = {
+      eat: `
+        [out:json][timeout:25];
+        (
+          node["amenity"~"^(restaurant|cafe|bar|pub|fast_food|ice_cream|bakery)$"]["name"](around:${r},${lat},${lon});
+          way["amenity"~"^(restaurant|cafe|bar|pub|fast_food|ice_cream|bakery)$"]["name"](around:${r},${lat},${lon});
+        );
+        out body center;`,
+      see: `
+        [out:json][timeout:25];
+        (
+          node["tourism"~"^(museum|monument|viewpoint|attraction|gallery|zoo|aquarium|artwork)$"]["name"](around:${r},${lat},${lon});
+          node["historic"]["name"](around:${r},${lat},${lon});
+          way["tourism"~"^(museum|monument|viewpoint|attraction|gallery|zoo|aquarium)$"]["name"](around:${r},${lat},${lon});
+          way["historic"]["name"](around:${r},${lat},${lon});
+        );
+        out body center;`,
+      do: `
+        [out:json][timeout:25];
+        (
+          node["leisure"~"^(park|sports_centre|golf_course|miniature_golf|bowling_alley|water_park|beach_resort|amusement_arcade|escape_game)$"]["name"](around:${r},${lat},${lon});
+          node["amenity"~"^(cinema|theatre|nightclub|casino|arts_centre)$"]["name"](around:${r},${lat},${lon});
+          node["tourism"~"^(theme_park|zoo|aquarium)$"]["name"](around:${r},${lat},${lon});
+          way["leisure"~"^(park|sports_centre|golf_course|miniature_golf|water_park)$"]["name"](around:${r},${lat},${lon});
+          way["tourism"~"^(theme_park|zoo|aquarium)$"]["name"](around:${r},${lat},${lon});
+        );
+        out body center;`
+    };
+    return queries[cat];
+  }
+
+  async function fetchCategory(cat) {
+    const res = await fetch(OVERPASS_ENDPOINT, {
+      method: 'POST',
+      body: buildQuery(cat, state.lat, state.lon)
+    });
+    const data = await res.json();
+
+    return data.elements
+      .filter(el => el.tags?.name)
+      .map(el => ({
+        name:    el.tags.name,
+        cat,
+        type:    getTypeLabel(cat, el.tags),
+        lat:     el.lat ?? el.center?.lat,
+        lon:     el.lon ?? el.center?.lon,
+        address: buildAddress(el.tags),
+        detail:  el.tags.cuisine
+                   ? el.tags.cuisine.split(';')[0].replace(/_/g, ' ')
+                   : null
+      }))
+      .filter(el => el.lat && el.lon);
+  }
+
+  async function fetchSuggestions() {
+    if (!state.locationReady) {
+      showError('Still waiting for your location. Please allow location access and try again.');
+      return;
+    }
+    if (state.loading) return;
+    state.loading = true;
+
+    showLoading();
+
+    try {
+      const cats = state.activeCategory
+        ? [state.activeCategory]
+        : ['eat', 'do', 'see'];
+
+      const results = await Promise.all(cats.map(fetchCategory));
+
+      let pool;
+      if (cats.length === 1) {
+        pool = shuffle(results[0]);
+      } else {
+        // Interleave categories so they alternate, then shuffle within groups
+        pool = interleave(
+          shuffle(results[0]),
+          shuffle(results[1]),
+          shuffle(results[2])
+        );
+      }
+
+      if (pool.length === 0) {
+        showError("Nothing found nearby. Try a different category, or check back when you're somewhere with more going on.");
+        state.loading = false;
+        return;
+      }
+
+      state.pool    = pool;
+      state.index   = 0;
+      state.browsing = true;
+      state.loading  = false;
+
+      showSuggestion();
+
+    } catch (err) {
+      console.error(err);
+      state.loading = false;
+      showError('Could not reach the places database. Check your connection and try again.');
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // UTILITY HELPERS
+  // ─────────────────────────────────────────────────────────
+  function getTypeLabel(cat, tags) {
+    const maps = {
+      eat: { restaurant: 'Restaurant', cafe: 'Café', bar: 'Bar', pub: 'Pub', fast_food: 'Quick Bite', ice_cream: 'Ice Cream', bakery: 'Bakery' },
+      see: { museum: 'Museum', monument: 'Monument', viewpoint: 'Viewpoint', attraction: 'Attraction', gallery: 'Gallery', zoo: 'Zoo', aquarium: 'Aquarium', artwork: 'Public Art' },
+      do:  { park: 'Park', sports_centre: 'Sports', golf_course: 'Golf', miniature_golf: 'Mini Golf', bowling_alley: 'Bowling', water_park: 'Water Park', beach_resort: 'Beach', amusement_arcade: 'Arcade', escape_game: 'Escape Room', cinema: 'Cinema', theatre: 'Theatre', nightclub: 'Nightlife', casino: 'Casino', arts_centre: 'Arts', theme_park: 'Theme Park', zoo: 'Zoo', aquarium: 'Aquarium' }
+    };
+    if (cat === 'eat') return maps.eat[tags.amenity] || 'Restaurant';
+    if (cat === 'see') return maps.see[tags.tourism] || (tags.historic ? 'Historic Site' : 'Landmark');
+    if (cat === 'do')  return maps.do[tags.leisure]  || maps.do[tags.amenity] || maps.do[tags.tourism] || 'Activity';
+  }
+
+  function buildAddress(tags) {
+    const parts = [];
+    if (tags['addr:housenumber']) parts.push(tags['addr:housenumber']);
+    if (tags['addr:street'])      parts.push(tags['addr:street']);
+    return parts.join(' ') || null;
+  }
+
+  function haversineMeters(lat1, lon1, lat2, lon2) {
+    const R  = 6371000;
+    const r  = Math.PI / 180;
+    const dL = (lat2 - lat1) * r;
+    const dO = (lon2 - lon1) * r;
+    const a  = Math.sin(dL/2)**2 + Math.cos(lat1*r) * Math.cos(lat2*r) * Math.sin(dO/2)**2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  }
+
+  function formatDist(m) {
+    return m < 1000 ? `${Math.round(m / 10) * 10}m` : `${(m / 1000).toFixed(1)}km`;
+  }
+
+  function shuffle(arr) {
+    const a = [...arr];
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  function interleave(...arrays) {
+    const result = [];
+    const max = Math.max(...arrays.map(a => a.length));
+    for (let i = 0; i < max; i++) {
+      for (const arr of arrays) { if (arr[i]) result.push(arr[i]); }
+    }
+    return result;
+  }
+
+  const catEmoji  = { do: '🎯', eat: '🍽️', see: '👁️' };
+  const catColors = { do: '#2BBFB0', eat: '#FF6B35', see: '#A78BFA' };
+
+  // ─────────────────────────────────────────────────────────
+  // UI RENDERING
+  // ─────────────────────────────────────────────────────────
+  function showLoading() {
+    setButtons('loading');
+    document.getElementById('cardArea').innerHTML = `
+      <div class="loading-card">
+        <div class="spinner"></div>
+        <div class="loading-msg">Finding what's nearby…</div>
+      </div>`;
+  }
+
+  function showError(msg) {
+    setButtons('error');
+    document.getElementById('cardArea').innerHTML = `
+      <div class="error-card">
+        <div class="error-icon">🗺️</div>
+        <div class="error-msg">${msg}</div>
+      </div>`;
+  }
+
+  function showSuggestion() {
+    const s = state.pool[state.index];
+    if (!s) {
+      // Pool exhausted — refetch
+      state.pool  = [];
+      state.index = 0;
+      fetchSuggestions();
+      return;
+    }
+
+    const dist    = haversineMeters(state.lat, state.lon, s.lat, s.lon);
+    const detail  = s.detail ? ` · ${s.detail}` : '';
+    const addrLine = s.address
+      ? `<div class="card-address">📍 ${s.address}</div>`
+      : '';
+
+    const card = document.createElement('div');
+    card.className = 'suggestion-card';
+    card.innerHTML = `
+      <div class="card-glow" style="background: ${catColors[s.cat]}"></div>
+      <span class="card-badge badge-${s.cat}">${catEmoji[s.cat]} ${s.type}${detail}</span>
+      <div class="card-name">${s.name}</div>
+      <div class="card-meta">
+        <span>📏 ${formatDist(dist)} away</span>
+      </div>
+      ${addrLine}
+    `;
+
+    const area     = document.getElementById('cardArea');
+    const existing = area.querySelector('.suggestion-card');
+
+    if (existing) {
+      existing.classList.add('card-exit');
+      setTimeout(() => {
+        area.innerHTML = '';
+        area.appendChild(card);
+      }, 210);
+    } else {
+      area.innerHTML = '';
+      area.appendChild(card);
+    }
+
+    const remaining = state.pool.length - state.index - 1;
+    setButtons('browsing', remaining);
+  }
+
+  function setButtons(mode, remaining = 0) {
+    const findBtn  = document.getElementById('findBtn');
+    const nahBtn   = document.getElementById('nahBtn');
+    const counter  = document.getElementById('nearbyCount');
+
+    findBtn.disabled = false;
+
+    if (mode === 'loading') {
+      findBtn.classList.add('hidden');
+      nahBtn.classList.add('hidden');
+      counter.classList.add('hidden');
+
+    } else if (mode === 'error') {
+      findBtn.textContent = 'Try Again ↻';
+      findBtn.onclick = handleFindBtn;
+      findBtn.classList.remove('hidden');
+      nahBtn.classList.add('hidden');
+      counter.classList.add('hidden');
+
+    } else if (mode === 'browsing') {
+      findBtn.textContent = "Let's go →";
+      findBtn.onclick = letsGo;
+      findBtn.classList.remove('hidden');
+      nahBtn.classList.remove('hidden');
+      counter.classList.remove('hidden');
+      counter.textContent = remaining > 0 ? `${remaining} more nearby` : 'Last one nearby — will refresh';
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // USER ACTIONS
+  // ─────────────────────────────────────────────────────────
+  function handleFindBtn() {
+    if (state.browsing && state.pool.length > 0) {
+      showSuggestion(); // show current suggestion again (after error)
+    } else {
+      fetchSuggestions();
+    }
+  }
+
+  function nextSuggestion() {
+    state.index++;
+    showSuggestion();
+  }
+
+  function letsGo() {
+    const s = state.pool[state.index];
+    if (!s) return;
+    const url = `https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lon}&destination_place_name=${encodeURIComponent(s.name)}`;
+    window.open(url, '_blank');
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // INIT
+  // ─────────────────────────────────────────────────────────
+  initLocation();
+</script>
+</body>
+</html>
