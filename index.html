@@ -797,6 +797,15 @@
       nahBtn.classList.remove('hidden');
       counter.classList.remove('hidden');
       counter.textContent = remaining > 0 ? `${remaining} more nearby` : 'Last one nearby — will refresh';
+
+    } else if (mode === 'confirming') {
+      findBtn.textContent = 'Yes, take me there! →';
+      findBtn.onclick = confirmGo;
+      findBtn.classList.remove('hidden');
+      nahBtn.textContent = 'Wait, nah';
+      nahBtn.onclick = cancelGo;
+      nahBtn.classList.remove('hidden');
+      counter.classList.add('hidden');
     }
   }
 
@@ -819,6 +828,12 @@
   }
 
   function letsGo() {
+    const s = state.pool[state.index];
+    if (!s) return;
+    setButtons('confirming');
+  }
+
+  function confirmGo() {
     const s = state.pool[state.index];
     if (!s) return;
     const url = `https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lon}&destination_place_name=${encodeURIComponent(s.name)}`;
