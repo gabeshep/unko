@@ -716,6 +716,18 @@
       return;
     }
 
+    // Skip malformed suggestion objects that are missing required properties
+    const isValid = typeof s.name === 'string' && s.name.trim() !== '' &&
+                    typeof s.lat  === 'number'  && isFinite(s.lat) &&
+                    typeof s.lon  === 'number'  && isFinite(s.lon) &&
+                    typeof s.cat  === 'string'  && s.cat in catColors;
+
+    if (!isValid) {
+      state.index++;
+      showSuggestion();
+      return;
+    }
+
     const dist    = haversineMeters(state.lat, state.lon, s.lat, s.lon);
     const detail  = s.detail ? ` · ${s.detail}` : '';
     const addrLine = s.address
