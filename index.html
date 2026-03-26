@@ -447,7 +447,8 @@
     pool: [],               // normalized suggestion objects
     index: 0,
     browsing: false,        // true once first results are shown
-    loading: false
+    loading: false,
+    seenIds: new Set()      // IDs of suggestions already shown
   };
 
   // ─────────────────────────────────────────────────────────
@@ -568,6 +569,7 @@
     return data.elements
       .filter(el => el.tags?.name)
       .map(el => ({
+        id:      `${el.type}-${el.id}`,
         name:    el.tags.name,
         cat,
         type:    getTypeLabel(cat, el.tags),
@@ -609,6 +611,9 @@
           shuffle(results[2])
         );
       }
+
+      // Filter out already-seen suggestions
+      pool = pool.filter(el => !state.seenIds.has(el.id));
 
       if (pool.length === 0) {
         showError("Nothing found nearby. Try a different category, or check back when you're somewhere with more going on.");
@@ -793,6 +798,8 @@
   }
 
   function nextSuggestion() {
+    const current = state.pool[state.index];
+    if (current) state.seenIds.add(current.id);
     state.index++;
     showSuggestion();
   }
