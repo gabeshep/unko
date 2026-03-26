@@ -520,67 +520,52 @@
   }
 
   // ─────────────────────────────────────────────────────────
-  // OVERPASS QUERIES — no API key needed, runs in browser
+  // FOURSQUARE PLACES API
+  // Requires window.FOURSQUARE_API_KEY to be set, e.g. via:
+  //   <script>window.FOURSQUARE_API_KEY = 'your_key_here'</script>
+  // before this script, or injected server-side.
   // ─────────────────────────────────────────────────────────
+  const FOURSQUARE_ENDPOINT = 'https://api.foursquare.com/v3/places/search';
   const RADII = { eat: 1500, see: 2500, do: 3000 };
 
-  const OVERPASS_ENDPOINT = 'https://overpass-api.de/api/interpreter';
-
-  function buildQuery(cat, lat, lon) {
-    const r = RADII[cat];
-    const queries = {
-      eat: `
-        [out:json][timeout:25];
-        (
-          node["amenity"~"^(restaurant|cafe|bar|pub|fast_food|ice_cream|bakery)$"]["name"](around:${r},${lat},${lon});
-          way["amenity"~"^(restaurant|cafe|bar|pub|fast_food|ice_cream|bakery)$"]["name"](around:${r},${lat},${lon});
-        );
-        out body center;`,
-      see: `
-        [out:json][timeout:25];
-        (
-          node["tourism"~"^(museum|monument|viewpoint|attraction|gallery|zoo|aquarium|artwork)$"]["name"](around:${r},${lat},${lon});
-          node["historic"]["name"](around:${r},${lat},${lon});
-          way["tourism"~"^(museum|monument|viewpoint|attraction|gallery|zoo|aquarium)$"]["name"](around:${r},${lat},${lon});
-          way["historic"]["name"](around:${r},${lat},${lon});
-        );
-        out body center;`,
-      do: `
-        [out:json][timeout:25];
-        (
-          node["leisure"~"^(park|sports_centre|golf_course|miniature_golf|bowling_alley|water_park|beach_resort|amusement_arcade|escape_game)$"]["name"](around:${r},${lat},${lon});
-          node["amenity"~"^(cinema|theatre|nightclub|casino|arts_centre)$"]["name"](around:${r},${lat},${lon});
-          node["tourism"~"^(theme_park|zoo|aquarium)$"]["name"](around:${r},${lat},${lon});
-          way["leisure"~"^(park|sports_centre|golf_course|miniature_golf|water_park)$"]["name"](around:${r},${lat},${lon});
-          way["tourism"~"^(theme_park|zoo|aquarium)$"]["name"](around:${r},${lat},${lon});
-        );
-        out body center;`
-    };
-    return queries[cat];
-  }
+  const CATEGORY_IDS = {
+    eat: '13000',
+    see: '16000',
+    do:  '10000,18000'
+  };
 
   async function fetchCategory(cat) {
-    const res = await fetch(OVERPASS_ENDPOINT, {
-      method: 'POST',
-      body: buildQuery(cat, state.lat, state.lon)
+    const apiKey = (typeof window !== 'undefined' && window.FOURSQUARE_API_KEY) || '';
+    const params = new URLSearchParams({
+      ll:         `${state.lat},${state.lon}`,
+      categories: CATEGORY_IDS[cat],
+      radius:     RADII[cat],
+      limit:      50,
+      fields:     'fsq_id,name,categories,geocodes,location'
     });
+
+    const res = await fetch(`${FOURSQUARE_ENDPOINT}?${params}`, {
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        Accept: 'application/json'
+      }
+    });
+
+    if (!res.ok) throw new Error(`Foursquare error ${res.status}`);
     const data = await res.json();
 
-    return data.elements
-      .filter(el => el.tags?.name)
-      .map(el => ({
-        id:      `${el.type}-${el.id}`,
-        name:    el.tags.name,
+    return (data.results || [])
+      .filter(p => p.name && p.geocodes?.main)
+      .map(p => ({
+        id:      p.fsq_id,
+        name:    p.name,
         cat,
-        type:    getTypeLabel(cat, el.tags),
-        lat:     el.lat ?? el.center?.lat,
-        lon:     el.lon ?? el.center?.lon,
-        address: buildAddress(el.tags),
-        detail:  el.tags.cuisine
-                   ? el.tags.cuisine.split(';')[0].replace(/_/g, ' ')
-                   : null
-      }))
-      .filter(el => el.lat && el.lon);
+        type:    getFoursquareTypeLabel(cat, p.categories),
+        lat:     p.geocodes.main.latitude,
+        lon:     p.geocodes.main.longitude,
+        address: buildFoursquareAddress(p.location),
+        detail:  null
+      }));
   }
 
   async function fetchSuggestions() {
@@ -638,22 +623,14 @@
   // ─────────────────────────────────────────────────────────
   // UTILITY HELPERS
   // ─────────────────────────────────────────────────────────
-  function getTypeLabel(cat, tags) {
-    const maps = {
-      eat: { restaurant: 'Restaurant', cafe: 'Café', bar: 'Bar', pub: 'Pub', fast_food: 'Quick Bite', ice_cream: 'Ice Cream', bakery: 'Bakery' },
-      see: { museum: 'Museum', monument: 'Monument', viewpoint: 'Viewpoint', attraction: 'Attraction', gallery: 'Gallery', zoo: 'Zoo', aquarium: 'Aquarium', artwork: 'Public Art' },
-      do:  { park: 'Park', sports_centre: 'Sports', golf_course: 'Golf', miniature_golf: 'Mini Golf', bowling_alley: 'Bowling', water_park: 'Water Park', beach_resort: 'Beach', amusement_arcade: 'Arcade', escape_game: 'Escape Room', cinema: 'Cinema', theatre: 'Theatre', nightclub: 'Nightlife', casino: 'Casino', arts_centre: 'Arts', theme_park: 'Theme Park', zoo: 'Zoo', aquarium: 'Aquarium' }
-    };
-    if (cat === 'eat') return maps.eat[tags.amenity] || 'Restaurant';
-    if (cat === 'see') return maps.see[tags.tourism] || (tags.historic ? 'Historic Site' : 'Landmark');
-    if (cat === 'do')  return maps.do[tags.leisure]  || maps.do[tags.amenity] || maps.do[tags.tourism] || 'Activity';
+  function getFoursquareTypeLabel(cat, categories) {
+    if (categories && categories.length > 0) return categories[0].name;
+    return cat === 'eat' ? 'Restaurant' : cat === 'see' ? 'Landmark' : 'Activity';
   }
 
-  function buildAddress(tags) {
-    const parts = [];
-    if (tags['addr:housenumber']) parts.push(tags['addr:housenumber']);
-    if (tags['addr:street'])      parts.push(tags['addr:street']);
-    return parts.join(' ') || null;
+  function buildFoursquareAddress(location) {
+    if (!location) return null;
+    return location.address || null;
   }
 
   function haversineMeters(lat1, lon1, lat2, lon2) {
