@@ -371,6 +371,32 @@
     .btn-nah:active { background: var(--surface); }
     .btn-nah:disabled { opacity: 0.35; cursor: not-allowed; }
 
+    .btn-row {
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn-row .btn-go { flex: 1; }
+
+    .btn-share {
+      padding: 18px 20px;
+      border-radius: 16px;
+      border: 1.5px solid var(--surface-2);
+      background: var(--surface);
+      color: var(--muted);
+      font-size: 20px;
+      cursor: pointer;
+      transition: all 0.18s ease;
+      flex-shrink: 0;
+      line-height: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .btn-share:hover  { border-color: var(--muted); color: var(--cream); background: var(--surface-2); }
+    .btn-share:active { background: var(--surface-2); }
+
     .nearby-count {
       text-align: center;
       font-size: 12px;
@@ -425,9 +451,14 @@
 
   <!-- Actions -->
   <div class="actions">
-    <button class="btn-go" id="findBtn" onclick="handleFindBtn()">
-      Find Something ✦
-    </button>
+    <div class="btn-row">
+      <button class="btn-go" id="findBtn" onclick="handleFindBtn()">
+        Find Something ✦
+      </button>
+      <button class="btn-share hidden" id="shareBtn" onclick="sharePlace()" title="Send this place to a friend">
+        ↗
+      </button>
+    </div>
     <button class="btn-nah hidden" id="nahBtn" onclick="nextSuggestion()">
       Nah, what else →
     </button>
@@ -520,38 +551,29 @@
   }
 
   // ─────────────────────────────────────────────────────────
-  // FOURSQUARE PLACES API
-  // Requires window.FOURSQUARE_API_KEY to be set, e.g. via:
-  //   <script>window.FOURSQUARE_API_KEY = 'your_key_here'</script>
-  // before this script, or injected server-side.
+  // FOURSQUARE PLACES API v3
   // ─────────────────────────────────────────────────────────
   const FOURSQUARE_ENDPOINT = 'https://api.foursquare.com/v3/places/search';
   const RADII = { eat: 1500, see: 2500, do: 3000 };
 
-  const CATEGORY_IDS = {
-    eat: '13000',
-    see: '16000',
-    do:  '10000,18000'
-  };
+  const FSQ_ENDPOINT   = 'https://api.foursquare.com/v3/places/search';
+  const FSQ_CATEGORIES = { eat: '13000', see: '16000', do: '10000,18000' };
 
   async function fetchCategory(cat) {
-    const apiKey = (typeof window !== 'undefined' && window.FOURSQUARE_API_KEY) || '';
-    const params = new URLSearchParams({
-      ll:         `${state.lat},${state.lon}`,
-      categories: CATEGORY_IDS[cat],
-      radius:     RADII[cat],
-      limit:      50,
-      fields:     'fsq_id,name,categories,geocodes,location'
-    });
+    const apiKey = window.FOURSQUARE_API_KEY;
+    if (!apiKey) throw new Error('FOURSQUARE_API_KEY is not set');
 
-    const res = await fetch(`${FOURSQUARE_ENDPOINT}?${params}`, {
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        Accept: 'application/json'
-      }
-    });
+    const url = new URL(FSQ_ENDPOINT);
+    url.searchParams.set('ll', `${state.lat},${state.lon}`);
+    url.searchParams.set('categories', FSQ_CATEGORIES[cat]);
+    url.searchParams.set('radius', RADII[cat]);
+    url.searchParams.set('limit', '50');
+    url.searchParams.set('fields', 'fsq_id,name,categories,geocodes,location');
 
-    if (!res.ok) throw new Error(`Foursquare error ${res.status}`);
+    const res = await fetch(url.toString(), {
+      headers: { 'Authorization': `Bearer ${apiKey}`, 'Accept': 'application/json' }
+    });
+    if (!res.ok) throw new Error(`Foursquare API error: ${res.status}`);
     const data = await res.json();
 
     return (data.results || [])
@@ -560,10 +582,10 @@
         id:      p.fsq_id,
         name:    p.name,
         cat,
-        type:    getFoursquareTypeLabel(cat, p.categories),
+        type:    getTypeLabel(cat, p.categories),
         lat:     p.geocodes.main.latitude,
         lon:     p.geocodes.main.longitude,
-        address: buildFoursquareAddress(p.location),
+        address: buildAddress(p.location),
         detail:  null
       }));
   }
@@ -623,14 +645,14 @@
   // ─────────────────────────────────────────────────────────
   // UTILITY HELPERS
   // ─────────────────────────────────────────────────────────
-  function getFoursquareTypeLabel(cat, categories) {
-    if (categories && categories.length > 0) return categories[0].name;
+  function getTypeLabel(cat, categories) {
+    if (categories && categories.length > 0) return categories[0].short_name || categories[0].name;
     return cat === 'eat' ? 'Restaurant' : cat === 'see' ? 'Landmark' : 'Activity';
   }
 
-  function buildFoursquareAddress(location) {
+  function buildAddress(location) {
     if (!location) return null;
-    return location.address || null;
+    return location.address || location.formatted_address || null;
   }
 
   function haversineMeters(lat1, lon1, lat2, lon2) {
@@ -748,6 +770,7 @@
 
   function setButtons(mode, remaining = 0) {
     const findBtn  = document.getElementById('findBtn');
+    const shareBtn = document.getElementById('shareBtn');
     const nahBtn   = document.getElementById('nahBtn');
     const counter  = document.getElementById('nearbyCount');
 
@@ -755,6 +778,7 @@
 
     if (mode === 'loading') {
       findBtn.classList.add('hidden');
+      shareBtn.classList.add('hidden');
       nahBtn.classList.add('hidden');
       counter.classList.add('hidden');
 
@@ -762,6 +786,7 @@
       findBtn.textContent = 'Try Again ↻';
       findBtn.onclick = handleFindBtn;
       findBtn.classList.remove('hidden');
+      shareBtn.classList.add('hidden');
       nahBtn.classList.add('hidden');
       counter.classList.add('hidden');
 
@@ -769,9 +794,19 @@
       findBtn.textContent = "Let's go →";
       findBtn.onclick = letsGo;
       findBtn.classList.remove('hidden');
+      if (navigator.share || navigator.clipboard) shareBtn.classList.remove('hidden');
       nahBtn.classList.remove('hidden');
       counter.classList.remove('hidden');
       counter.textContent = remaining > 0 ? `${remaining} more nearby` : 'Last one nearby — will refresh';
+
+    } else if (mode === 'confirming') {
+      findBtn.textContent = 'Yes, take me there! →';
+      findBtn.onclick = confirmGo;
+      findBtn.classList.remove('hidden');
+      nahBtn.textContent = 'Wait, nah';
+      nahBtn.onclick = cancelGo;
+      nahBtn.classList.remove('hidden');
+      counter.classList.add('hidden');
     }
   }
 
@@ -796,8 +831,34 @@
   function letsGo() {
     const s = state.pool[state.index];
     if (!s) return;
+    setButtons('confirming');
+  }
+
+  function confirmGo() {
+    const s = state.pool[state.index];
+    if (!s) return;
     const url = `https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lon}&destination_place_name=${encodeURIComponent(s.name)}`;
     window.open(url, '_blank');
+  }
+
+  function sharePlace() {
+    const s = state.pool[state.index];
+    if (!s) return;
+
+    const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(s.name)}+${s.lat},${s.lon}`;
+    const dist    = haversineMeters(state.lat, state.lon, s.lat, s.lon);
+    const text    = `${s.name} — ${s.type}, ${formatDist(dist)} away`;
+
+    if (navigator.share) {
+      navigator.share({ title: s.name, text, url: mapsUrl }).catch(() => {});
+    } else if (navigator.clipboard) {
+      navigator.clipboard.writeText(`${text}\n${mapsUrl}`).then(() => {
+        const btn = document.getElementById('shareBtn');
+        const prev = btn.innerHTML;
+        btn.innerHTML = '✓';
+        setTimeout(() => { btn.innerHTML = prev; }, 1500);
+      }).catch(() => {});
+    }
   }
 
   // ─────────────────────────────────────────────────────────
