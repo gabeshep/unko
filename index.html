@@ -3,21 +3,21 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>Wander — Find your next adventure</title>
+  <title>Unko — Find your next adventure</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg:        #0A0906;
-      --surface:   #16120D;
-      --surface-2: #201A12;
-      --gold:      #F0A500;
+      --bg:        #3C3C3C;
+      --surface:   #2A2A2A;
+      --surface-2: #383838;
+      --gold:      #E8920A;
       --cream:     #F5ECD8;
-      --muted:     #6B6050;
-      --do:        #2BBFB0;
-      --eat:       #FF6B35;
-      --see:       #A78BFA;
+      --muted:     #888888;
+      --do:        #1A6B72;
+      --eat:       #D45A2A;
+      --see:       #5B3E8A;
       --radius:    22px;
     }
 
@@ -48,7 +48,7 @@
       width: 600px; height: 600px;
       top: -200px; left: 50%;
       transform: translateX(-50%);
-      background: radial-gradient(circle, rgba(240,165,0,0.06) 0%, transparent 70%);
+      background: radial-gradient(circle, rgba(232,146,10,0.06) 0%, transparent 70%);
       pointer-events: none;
       z-index: 0;
     }
@@ -77,7 +77,7 @@
       font-family: 'Playfair Display', serif;
       font-size: 24px;
       font-weight: 900;
-      letter-spacing: 0.15em;
+      letter-spacing: 0.18em;
       color: var(--gold);
       text-transform: uppercase;
     }
@@ -133,9 +133,9 @@
     .cat-btn .icon { font-size: 22px; line-height: 1; }
     .cat-btn:hover { border-color: var(--muted); color: var(--cream); background: var(--surface-2); }
 
-    .cat-btn.active[data-cat="do"]  { background: rgba(43,191,176,0.1);  border-color: var(--do);  color: var(--do);  }
-    .cat-btn.active[data-cat="eat"] { background: rgba(255,107,53,0.1);  border-color: var(--eat); color: var(--eat); }
-    .cat-btn.active[data-cat="see"] { background: rgba(167,139,250,0.1); border-color: var(--see); color: var(--see); }
+    .cat-btn.active[data-cat="do"]  { background: rgba(26,107,114,0.1);  border-color: var(--do);  color: var(--do);  }
+    .cat-btn.active[data-cat="eat"] { background: rgba(212,90,42,0.1);   border-color: var(--eat); color: var(--eat); }
+    .cat-btn.active[data-cat="see"] { background: rgba(91,62,138,0.1);   border-color: var(--see); color: var(--see); }
 
     /* ── CARD AREA ───────────────────────────── */
     .card-area {
@@ -167,11 +167,11 @@
       position: absolute;
       inset: 0;
       border-radius: 50%;
-      border: 1.5px solid rgba(240,165,0,0.2);
+      border: 1.5px solid rgba(232,146,10,0.2);
       animation: pulse-ring 2.5s ease-in-out infinite;
     }
-    .compass-ring:nth-child(2) { inset: -10px; border-color: rgba(240,165,0,0.1); animation-delay: 0.5s; }
-    .compass-ring:nth-child(3) { inset: -20px; border-color: rgba(240,165,0,0.06); animation-delay: 1s; }
+    .compass-ring:nth-child(2) { inset: -10px; border-color: rgba(232,146,10,0.1); animation-delay: 0.5s; }
+    .compass-ring:nth-child(3) { inset: -20px; border-color: rgba(232,146,10,0.06); animation-delay: 1s; }
 
     @keyframes pulse-ring {
       0%, 100% { opacity: 1; transform: scale(1); }
@@ -244,9 +244,9 @@
       margin-bottom: 18px;
     }
 
-    .badge-do  { background: rgba(43,191,176,0.12);  color: var(--do);  }
-    .badge-eat { background: rgba(255,107,53,0.12);  color: var(--eat); }
-    .badge-see { background: rgba(167,139,250,0.12); color: var(--see); }
+    .badge-do  { background: rgba(26,107,114,0.12);  color: var(--do);  }
+    .badge-eat { background: rgba(212,90,42,0.12);   color: var(--eat); }
+    .badge-see { background: rgba(91,62,138,0.12);   color: var(--see); }
 
     .card-name {
       font-family: 'Playfair Display', serif;
@@ -336,7 +336,7 @@
       border-radius: 16px;
       border: none;
       background: var(--gold);
-      color: #0A0906;
+      color: var(--bg);
       font-family: 'DM Sans', sans-serif;
       font-size: 16px;
       font-weight: 500;
@@ -451,7 +451,7 @@
       justify-content: center;
     }
     .btn-save:hover  { border-color: var(--gold); color: var(--gold); background: var(--surface-2); }
-    .btn-save.saved  { border-color: var(--gold); color: var(--gold); background: rgba(240,165,0,0.08); }
+    .btn-save.saved  { border-color: var(--gold); color: var(--gold); background: rgba(232,146,10,0.08); }
 
     /* ── PLACES DRAWER ───────────────────────── */
     .drawer-overlay {
@@ -601,7 +601,7 @@
       border-radius: 12px;
       border: none;
       background: var(--gold);
-      color: #0A0906;
+      color: var(--bg);
       font-family: 'DM Sans', sans-serif;
       font-size: 13px;
       font-weight: 500;
@@ -696,7 +696,7 @@
       display: flex; align-items: center; justify-content: center;
       transition: all 0.15s;
     }
-    .btn-saved-map:hover { background: var(--gold); color: #0A0906; }
+    .btn-saved-map:hover { background: var(--gold); color: var(--bg); }
 
     .btn-saved-remove {
       width: 32px; height: 32px;
@@ -717,7 +717,7 @@
 
   <!-- Header -->
   <header class="header">
-    <div class="logo">Wander</div>
+    <div class="logo">UNKO</div>
     <div style="display:flex;align-items:center;gap:10px;">
       <div class="location-badge">
         <div class="location-dot" id="locationDot"></div>
@@ -809,8 +809,8 @@
   // ─────────────────────────────────────────────────────────
   // PROFILE & SAVED PLACES — persistent via localStorage
   // ─────────────────────────────────────────────────────────
-  const STORAGE_PROFILE = 'wander_profile';
-  const STORAGE_SAVED   = 'wander_saved_places';
+  const STORAGE_PROFILE = 'unko_profile';
+  const STORAGE_SAVED   = 'unko_saved_places';
 
   function loadProfile() {
     try { return JSON.parse(localStorage.getItem(STORAGE_PROFILE)) || { name: '' }; }
@@ -1185,7 +1185,7 @@
   }
 
   const catEmoji  = { do: '🎯', eat: '🍽️', see: '👁️' };
-  const catColors = { do: '#2BBFB0', eat: '#FF6B35', see: '#A78BFA' };
+  const catColors = { do: '#1A6B72', eat: '#D45A2A', see: '#5B3E8A' };
 
   // ─────────────────────────────────────────────────────────
   // UI RENDERING
