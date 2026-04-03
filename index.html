@@ -861,7 +861,7 @@
     const s = state.pool[state.index];
     if (!s) return;
     track('navigation_opened', { category: s.cat, position: state.index });
-    const url = `https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lon}&destination_place_name=${encodeURIComponent(s.name)}`;
+    const url = `https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lon}`;
     window.open(url, '_blank');
   }
 
@@ -873,7 +873,7 @@
     const s = state.pool[state.index];
     if (!s) return;
 
-    const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(s.name)}+${s.lat},${s.lon}`;
+    const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(s.name + ' ' + s.lat + ',' + s.lon)}`;
     const dist    = haversineMeters(state.lat, state.lon, s.lat, s.lon);
     const text    = `${s.name} — ${s.type}, ${formatDist(dist)} away`;
 
