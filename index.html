@@ -466,6 +466,7 @@
   </div>
 
 </div>
+<script src="config.js"></script>
 <script>
   // ─────────────────────────────────────────────────────────
   // ANALYTICS — baseline product health instrumentation
@@ -568,11 +569,8 @@
   // ─────────────────────────────────────────────────────────
   // FOURSQUARE PLACES API v3
   // ─────────────────────────────────────────────────────────
-  window.FOURSQUARE_API_KEY = 'QHUVWE22MWTZAHBOPTECNY0YSJVRBHNYQKQYVDXZN2JGI5PP';
-  const FOURSQUARE_ENDPOINT = 'https://api.foursquare.com/v3/places/search';
-  const RADII = { eat: 1500, see: 2500, do: 3000 };
-
   const FSQ_ENDPOINT   = 'https://api.foursquare.com/v3/places/search';
+  const RADII          = { eat: 1500, see: 2500, do: 3000 };
   const FSQ_CATEGORIES = { eat: '13000', see: '16000', do: '10000,18000' };
 
   async function fetchCategory(cat) {
