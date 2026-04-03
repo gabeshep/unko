@@ -1211,7 +1211,8 @@
   function showSuggestion() {
     const s = state.pool[state.index];
     if (!s) {
-      // Pool exhausted — refetch
+      // Pool exhausted — clear seenIds so the user can cycle through again
+      state.seenIds.clear();
       state.pool  = [];
       state.index = 0;
       fetchSuggestions();
