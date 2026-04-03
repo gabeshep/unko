@@ -405,6 +405,311 @@
     }
 
     .hidden { display: none !important; }
+
+    /* ── PROFILE BUTTON ──────────────────────── */
+    .btn-profile {
+      width: 38px; height: 38px;
+      border-radius: 50%;
+      border: 1.5px solid var(--surface-2);
+      background: var(--surface);
+      color: var(--muted);
+      font-size: 17px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.18s ease;
+      flex-shrink: 0;
+      position: relative;
+    }
+    .btn-profile:hover { border-color: var(--gold); color: var(--gold); }
+    .btn-profile .saved-dot {
+      position: absolute;
+      top: -2px; right: -2px;
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--gold);
+      border: 1.5px solid var(--bg);
+      display: none;
+    }
+    .btn-profile.has-saves .saved-dot { display: block; }
+
+    /* ── SAVE BUTTON ─────────────────────────── */
+    .btn-save {
+      padding: 18px 20px;
+      border-radius: 16px;
+      border: 1.5px solid var(--surface-2);
+      background: var(--surface);
+      color: var(--muted);
+      font-size: 18px;
+      cursor: pointer;
+      transition: all 0.18s ease;
+      flex-shrink: 0;
+      line-height: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .btn-save:hover  { border-color: var(--gold); color: var(--gold); background: var(--surface-2); }
+    .btn-save.saved  { border-color: var(--gold); color: var(--gold); background: rgba(240,165,0,0.08); }
+
+    /* ── PLACES DRAWER ───────────────────────── */
+    .drawer-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.55);
+      z-index: 100;
+      opacity: 0;
+      transition: opacity 0.25s ease;
+      pointer-events: none;
+    }
+    .drawer-overlay.open { opacity: 1; pointer-events: all; }
+
+    .drawer {
+      position: fixed;
+      left: 0; right: 0; bottom: 0;
+      max-width: 480px;
+      margin: 0 auto;
+      background: var(--surface);
+      border-radius: 24px 24px 0 0;
+      border: 1px solid var(--surface-2);
+      border-bottom: none;
+      z-index: 101;
+      transform: translateY(100%);
+      transition: transform 0.3s cubic-bezier(0.34, 1.1, 0.64, 1);
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .drawer.open { transform: translateY(0); }
+
+    .drawer-handle {
+      width: 36px; height: 4px;
+      background: var(--surface-2);
+      border-radius: 2px;
+      margin: 14px auto 0;
+      flex-shrink: 0;
+    }
+
+    .drawer-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 22px 12px;
+      flex-shrink: 0;
+    }
+
+    .drawer-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--cream);
+    }
+
+    .btn-drawer-close {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      border: none;
+      background: var(--surface-2);
+      color: var(--muted);
+      font-size: 16px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.15s;
+    }
+    .btn-drawer-close:hover { background: var(--muted); color: var(--cream); }
+
+    .drawer-body {
+      overflow-y: auto;
+      flex: 1;
+      padding: 0 22px 32px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* Profile section */
+    .profile-section {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .section-label {
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .profile-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .profile-avatar {
+      width: 44px; height: 44px;
+      border-radius: 50%;
+      background: var(--surface-2);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px;
+      flex-shrink: 0;
+    }
+
+    .profile-name-wrap {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .profile-name-display {
+      font-size: 15px;
+      font-weight: 500;
+      color: var(--cream);
+    }
+
+    .profile-name-hint {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .profile-edit-form {
+      display: flex;
+      gap: 8px;
+    }
+
+    .profile-name-input {
+      flex: 1;
+      padding: 10px 14px;
+      border-radius: 12px;
+      border: 1.5px solid var(--surface-2);
+      background: var(--bg);
+      color: var(--cream);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .profile-name-input:focus { border-color: var(--gold); }
+    .profile-name-input::placeholder { color: var(--muted); }
+
+    .btn-save-name {
+      padding: 10px 16px;
+      border-radius: 12px;
+      border: none;
+      background: var(--gold);
+      color: #0A0906;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .btn-save-name:hover { background: #FFB800; }
+
+    .btn-edit-profile {
+      padding: 6px 12px;
+      border-radius: 10px;
+      border: 1.5px solid var(--surface-2);
+      background: transparent;
+      color: var(--muted);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn-edit-profile:hover { border-color: var(--muted); color: var(--cream); }
+
+    /* Saved places list */
+    .saved-section {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .saved-empty {
+      text-align: center;
+      padding: 28px 0 12px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .saved-place-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 16px;
+      border-radius: 16px;
+      background: var(--surface-2);
+      border: 1px solid transparent;
+      transition: border-color 0.15s;
+    }
+    .saved-place-item:hover { border-color: var(--surface-2); }
+
+    .saved-place-icon {
+      font-size: 22px;
+      flex-shrink: 0;
+      width: 36px; height: 36px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 10px;
+      background: var(--surface);
+    }
+
+    .saved-place-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .saved-place-name {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--cream);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .saved-place-meta {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    .saved-place-actions {
+      display: flex;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .btn-saved-map {
+      width: 32px; height: 32px;
+      border-radius: 9px;
+      border: none;
+      background: var(--surface);
+      color: var(--muted);
+      font-size: 14px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.15s;
+    }
+    .btn-saved-map:hover { background: var(--gold); color: #0A0906; }
+
+    .btn-saved-remove {
+      width: 32px; height: 32px;
+      border-radius: 9px;
+      border: none;
+      background: var(--surface);
+      color: var(--muted);
+      font-size: 14px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.15s;
+    }
+    .btn-saved-remove:hover { background: rgba(255,80,80,0.12); color: #ff5050; }
   </style>
 </head>
 <body>
@@ -413,9 +718,15 @@
   <!-- Header -->
   <header class="header">
     <div class="logo">Wander</div>
-    <div class="location-badge">
-      <div class="location-dot" id="locationDot"></div>
-      <span id="locationText">Locating you…</span>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div class="location-badge">
+        <div class="location-dot" id="locationDot"></div>
+        <span id="locationText">Locating you…</span>
+      </div>
+      <button class="btn-profile" id="profileBtn" onclick="openPlacesPanel()" title="My places &amp; profile">
+        👤
+        <span class="saved-dot"></span>
+      </button>
     </div>
   </header>
 
@@ -455,6 +766,9 @@
       <button class="btn-go" id="findBtn" onclick="handleFindBtn()">
         Find Something →
       </button>
+      <button class="btn-save hidden" id="saveBtn" onclick="toggleSavePlace()" title="Save this place">
+        ♡
+      </button>
       <button class="btn-share hidden" id="shareBtn" onclick="sharePlace()" title="Send this place to a friend">
         ↗
       </button>
@@ -465,6 +779,19 @@
     <div class="nearby-count hidden" id="nearbyCount"></div>
   </div>
 
+</div>
+
+<!-- Places & Profile drawer -->
+<div class="drawer-overlay" id="drawerOverlay" onclick="closePlacesPanel()"></div>
+<div class="drawer" id="placesDrawer">
+  <div class="drawer-handle"></div>
+  <div class="drawer-header">
+    <div class="drawer-title">My Places</div>
+    <button class="btn-drawer-close" onclick="closePlacesPanel()">✕</button>
+  </div>
+  <div class="drawer-body" id="drawerBody">
+    <!-- rendered by JS -->
+  </div>
 </div>
 <script src="config.js"></script>
 <script>
@@ -478,6 +805,159 @@
     // To connect a real analytics backend, replace or extend below:
     // window.analytics?.track(event, props);
   }
+
+  // ─────────────────────────────────────────────────────────
+  // PROFILE & SAVED PLACES — persistent via localStorage
+  // ─────────────────────────────────────────────────────────
+  const STORAGE_PROFILE = 'wander_profile';
+  const STORAGE_SAVED   = 'wander_saved_places';
+
+  function loadProfile() {
+    try { return JSON.parse(localStorage.getItem(STORAGE_PROFILE)) || { name: '' }; }
+    catch { return { name: '' }; }
+  }
+
+  function persistProfile(profile) {
+    localStorage.setItem(STORAGE_PROFILE, JSON.stringify(profile));
+  }
+
+  function loadSavedPlaces() {
+    try { return JSON.parse(localStorage.getItem(STORAGE_SAVED)) || []; }
+    catch { return []; }
+  }
+
+  function persistSavedPlaces(places) {
+    localStorage.setItem(STORAGE_SAVED, JSON.stringify(places));
+  }
+
+  function isSaved(id) {
+    return savedPlaces.some(p => p.id === id);
+  }
+
+  function toggleSavePlace() {
+    const s = state.pool[state.index];
+    if (!s) return;
+
+    if (isSaved(s.id)) {
+      savedPlaces = savedPlaces.filter(p => p.id !== s.id);
+      track('place_unsaved', { category: s.cat });
+    } else {
+      savedPlaces = [{ id: s.id, name: s.name, cat: s.cat, type: s.type,
+                       lat: s.lat, lon: s.lon, address: s.address,
+                       savedAt: Date.now() }, ...savedPlaces];
+      track('place_saved', { category: s.cat });
+    }
+    persistSavedPlaces(savedPlaces);
+    updateSaveBtn(s.id);
+    updateProfileBtnBadge();
+  }
+
+  function updateSaveBtn(id) {
+    const btn = document.getElementById('saveBtn');
+    if (!btn) return;
+    const saved = isSaved(id);
+    btn.innerHTML = saved ? '♥' : '♡';
+    btn.classList.toggle('saved', saved);
+    btn.title = saved ? 'Remove from saved places' : 'Save this place';
+  }
+
+  function updateProfileBtnBadge() {
+    const btn = document.getElementById('profileBtn');
+    if (btn) btn.classList.toggle('has-saves', savedPlaces.length > 0);
+  }
+
+  // ─── Drawer ───────────────────────────────────────────────
+  function openPlacesPanel() {
+    renderDrawer();
+    document.getElementById('drawerOverlay').classList.add('open');
+    document.getElementById('placesDrawer').classList.add('open');
+    track('places_panel_opened', { savedCount: savedPlaces.length });
+  }
+
+  function closePlacesPanel() {
+    document.getElementById('drawerOverlay').classList.remove('open');
+    document.getElementById('placesDrawer').classList.remove('open');
+  }
+
+  function renderDrawer() {
+    const profile = loadProfile();
+    const body = document.getElementById('drawerBody');
+
+    const savedHtml = savedPlaces.length === 0
+      ? `<div class="saved-empty">No saved places yet.<br>Tap ♡ on a suggestion to save it here.</div>`
+      : savedPlaces.map(p => {
+          const emoji = catEmoji[p.cat] || '📍';
+          const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.name)}+${p.lat},${p.lon}`;
+          const escapedName = p.name.replace(/'/g, "\\'");
+          return `
+            <div class="saved-place-item" id="saved-${p.id}">
+              <div class="saved-place-icon">${emoji}</div>
+              <div class="saved-place-info">
+                <div class="saved-place-name">${p.name}</div>
+                <div class="saved-place-meta">${p.type}${p.address ? ' · ' + p.address : ''}</div>
+              </div>
+              <div class="saved-place-actions">
+                <button class="btn-saved-map" onclick="window.open('${mapsUrl}','_blank')" title="Open in Maps">🗺️</button>
+                <button class="btn-saved-remove" onclick="removeSavedPlace('${p.id}')" title="Remove">✕</button>
+              </div>
+            </div>`;
+        }).join('');
+
+    const profileName = profile.name || '';
+    body.innerHTML = `
+      <div class="profile-section">
+        <div class="section-label">Profile</div>
+        <div class="profile-row" id="profileDisplay">
+          <div class="profile-avatar">🧭</div>
+          <div class="profile-name-wrap">
+            <div class="profile-name-display">${profileName || 'Anonymous explorer'}</div>
+            <div class="profile-name-hint">${profileName ? 'Your display name' : 'Add your name'}</div>
+          </div>
+          <button class="btn-edit-profile" onclick="showProfileEditForm()">Edit</button>
+        </div>
+        <div class="profile-edit-form hidden" id="profileEditForm">
+          <input class="profile-name-input" id="profileNameInput" type="text"
+            placeholder="Your name" maxlength="32" value="${profileName}"
+            onkeydown="if(event.key==='Enter') saveProfileName()">
+          <button class="btn-save-name" onclick="saveProfileName()">Save</button>
+        </div>
+      </div>
+      <div class="saved-section">
+        <div class="section-label">Saved places (${savedPlaces.length})</div>
+        ${savedHtml}
+      </div>
+    `;
+  }
+
+  function showProfileEditForm() {
+    document.getElementById('profileDisplay').classList.add('hidden');
+    document.getElementById('profileEditForm').classList.remove('hidden');
+    document.getElementById('profileNameInput').focus();
+  }
+
+  function saveProfileName() {
+    const input = document.getElementById('profileNameInput');
+    const name = input ? input.value.trim() : '';
+    const profile = loadProfile();
+    profile.name = name;
+    persistProfile(profile);
+    track('profile_name_saved');
+    renderDrawer();
+  }
+
+  function removeSavedPlace(id) {
+    savedPlaces = savedPlaces.filter(p => p.id !== id);
+    persistSavedPlaces(savedPlaces);
+    updateProfileBtnBadge();
+    // Update save button if this is the currently shown suggestion
+    const current = state.pool[state.index];
+    if (current && current.id === id) updateSaveBtn(id);
+    renderDrawer();
+    track('place_removed_from_list');
+  }
+
+  // Init persistent data
+  let savedPlaces = loadSavedPlaces();
 
   // ─────────────────────────────────────────────────────────
   // STATE
@@ -784,11 +1264,13 @@
 
     const remaining = state.pool.length - state.index - 1;
     setButtons('browsing', remaining);
+    updateSaveBtn(s.id);
     track('suggestion_viewed', { category: s.cat, position: state.index, remaining });
   }
 
   function setButtons(mode, remaining = 0) {
     const findBtn  = document.getElementById('findBtn');
+    const saveBtn  = document.getElementById('saveBtn');
     const shareBtn = document.getElementById('shareBtn');
     const nahBtn   = document.getElementById('nahBtn');
     const counter  = document.getElementById('nearbyCount');
@@ -797,6 +1279,7 @@
 
     if (mode === 'loading') {
       findBtn.classList.add('hidden');
+      saveBtn.classList.add('hidden');
       shareBtn.classList.add('hidden');
       nahBtn.classList.add('hidden');
       counter.classList.add('hidden');
@@ -805,6 +1288,7 @@
       findBtn.textContent = 'Try Again ↻';
       findBtn.onclick = handleFindBtn;
       findBtn.classList.remove('hidden');
+      saveBtn.classList.add('hidden');
       shareBtn.classList.add('hidden');
       nahBtn.classList.add('hidden');
       counter.classList.add('hidden');
@@ -813,6 +1297,7 @@
       findBtn.textContent = "Let's go →";
       findBtn.onclick = letsGo;
       findBtn.classList.remove('hidden');
+      saveBtn.classList.remove('hidden');
       if (navigator.share || navigator.clipboard) shareBtn.classList.remove('hidden');
       nahBtn.classList.remove('hidden');
       counter.classList.remove('hidden');
@@ -822,6 +1307,8 @@
       findBtn.textContent = 'Yes, take me there →';
       findBtn.onclick = confirmGo;
       findBtn.classList.remove('hidden');
+      saveBtn.classList.add('hidden');
+      shareBtn.classList.add('hidden');
       nahBtn.textContent = 'Nah, go back';
       nahBtn.onclick = cancelGo;
       nahBtn.classList.remove('hidden');
@@ -896,6 +1383,7 @@
   // INIT
   // ─────────────────────────────────────────────────────────
   track('app_loaded');
+  updateProfileBtnBadge();
   initLocation();
 </script>
 </body>
