@@ -453,7 +453,7 @@
   <div class="actions">
     <div class="btn-row">
       <button class="btn-go" id="findBtn" onclick="handleFindBtn()">
-        Find Something ✦
+        Find Something →
       </button>
       <button class="btn-share hidden" id="shareBtn" onclick="sharePlace()" title="Send this place to a friend">
         ↗
@@ -801,10 +801,10 @@
       counter.textContent = remaining > 0 ? `${remaining} more nearby` : 'Last one nearby — will refresh';
 
     } else if (mode === 'confirming') {
-      findBtn.textContent = 'Yes, take me there! →';
+      findBtn.textContent = 'Yes, take me there →';
       findBtn.onclick = confirmGo;
       findBtn.classList.remove('hidden');
-      nahBtn.textContent = 'Wait, nah';
+      nahBtn.textContent = 'Nah, go back';
       nahBtn.onclick = cancelGo;
       nahBtn.classList.remove('hidden');
       counter.classList.add('hidden');
@@ -840,6 +840,10 @@
     if (!s) return;
     const url = `https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lon}&destination_place_name=${encodeURIComponent(s.name)}`;
     window.open(url, '_blank');
+  }
+
+  function cancelGo() {
+    showSuggestion();
   }
 
   function sharePlace() {
