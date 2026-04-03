@@ -453,7 +453,7 @@
   <div class="actions">
     <div class="btn-row">
       <button class="btn-go" id="findBtn" onclick="handleFindBtn()">
-        Find Something ✦
+        Find Something →
       </button>
       <button class="btn-share hidden" id="shareBtn" onclick="sharePlace()" title="Send this place to a friend">
         ↗
@@ -468,6 +468,17 @@
 </div>
 <script src="config.js"></script>
 <script>
+  // ─────────────────────────────────────────────────────────
+  // ANALYTICS — baseline product health instrumentation
+  // ─────────────────────────────────────────────────────────
+  function track(event, props) {
+    const payload = { event, ts: Date.now(), ...props };
+    // eslint-disable-next-line no-console
+    console.info('[track]', payload);
+    // To connect a real analytics backend, replace or extend below:
+    // window.analytics?.track(event, props);
+  }
+
   // ─────────────────────────────────────────────────────────
   // STATE
   // ─────────────────────────────────────────────────────────
@@ -499,6 +510,7 @@
         state.locationReady = true;
         document.getElementById('locationDot').classList.add('active');
         setLocationLabel('Location found', true);
+        track('location_granted');
 
         // Try to get a human-readable city name
         try {
@@ -516,6 +528,7 @@
       () => {
         setLocationLabel('Enable location', false);
         showError('Location access is needed to find things near you.<br>Please allow location and refresh the page.');
+        track('location_denied');
       },
       { enableHighAccuracy: false, timeout: 12000 }
     );
@@ -542,6 +555,8 @@
       state.activeCategory = cat;
       btn.classList.add('active');
     }
+
+    track('category_toggled', { category: state.activeCategory });
 
     // If already browsing, reset pool and re-fetch for the new filter
     if (state.browsing) {
@@ -598,6 +613,7 @@
     state.loading = true;
 
     showLoading();
+    track('search_started', { category: state.activeCategory });
 
     try {
       const cats = state.activeCategory
@@ -623,6 +639,7 @@
 
       if (pool.length === 0) {
         showError("Nothing found nearby. Try a different category, or check back when you're somewhere with more going on.");
+        track('search_empty', { category: state.activeCategory });
         state.loading = false;
         return;
       }
@@ -632,11 +649,13 @@
       state.browsing = true;
       state.loading  = false;
 
+      track('search_succeeded', { category: state.activeCategory, resultCount: pool.length });
       showSuggestion();
 
     } catch (err) {
       console.error(err);
       state.loading = false;
+      track('search_failed', { category: state.activeCategory, error: err.message });
       showError('Could not reach the places database. Check your connection and try again.');
     }
   }
@@ -765,6 +784,7 @@
 
     const remaining = state.pool.length - state.index - 1;
     setButtons('browsing', remaining);
+    track('suggestion_viewed', { category: s.cat, position: state.index, remaining });
   }
 
   function setButtons(mode, remaining = 0) {
@@ -799,10 +819,10 @@
       counter.textContent = remaining > 0 ? `${remaining} more nearby` : 'Last one nearby — will refresh';
 
     } else if (mode === 'confirming') {
-      findBtn.textContent = 'Yes, take me there! →';
+      findBtn.textContent = 'Yes, take me there →';
       findBtn.onclick = confirmGo;
       findBtn.classList.remove('hidden');
-      nahBtn.textContent = 'Wait, nah';
+      nahBtn.textContent = 'Nah, go back';
       nahBtn.onclick = cancelGo;
       nahBtn.classList.remove('hidden');
       counter.classList.add('hidden');
@@ -822,7 +842,10 @@
 
   function nextSuggestion() {
     const current = state.pool[state.index];
-    if (current) state.seenIds.add(current.id);
+    if (current) {
+      state.seenIds.add(current.id);
+      track('place_skipped', { category: current.cat, position: state.index });
+    }
     state.index++;
     showSuggestion();
   }
@@ -830,14 +853,20 @@
   function letsGo() {
     const s = state.pool[state.index];
     if (!s) return;
+    track('lets_go_tapped', { category: s.cat, position: state.index });
     setButtons('confirming');
   }
 
   function confirmGo() {
     const s = state.pool[state.index];
     if (!s) return;
+    track('navigation_opened', { category: s.cat, position: state.index });
     const url = `https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lon}&destination_place_name=${encodeURIComponent(s.name)}`;
     window.open(url, '_blank');
+  }
+
+  function cancelGo() {
+    showSuggestion();
   }
 
   function sharePlace() {
@@ -847,6 +876,9 @@
     const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(s.name)}+${s.lat},${s.lon}`;
     const dist    = haversineMeters(state.lat, state.lon, s.lat, s.lon);
     const text    = `${s.name} — ${s.type}, ${formatDist(dist)} away`;
+
+    const shareMethod = navigator.share ? 'native' : 'clipboard';
+    track('place_shared', { category: s.cat, method: shareMethod });
 
     if (navigator.share) {
       navigator.share({ title: s.name, text, url: mapsUrl }).catch(() => {});
@@ -863,6 +895,7 @@
   // ─────────────────────────────────────────────────────────
   // INIT
   // ─────────────────────────────────────────────────────────
+  track('app_loaded');
   initLocation();
 </script>
 </body>
