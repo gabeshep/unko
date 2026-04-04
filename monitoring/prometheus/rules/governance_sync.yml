@@ -1,0 +1,22 @@
+groups:
+  - name: governance_sync
+    rules:
+      - alert: GovernanceSyncDrop
+        expr: approvals_pending_db_count - approvals_queue_api_count > 0
+        for: 3m
+        labels:
+          severity: critical
+          team: sre-release-engineering
+        annotations:
+          summary: "DB pending approvals diverges from queue API count for more than 3 minutes"
+          description: "The number of pending approvals in the database ({{ $value }}) is higher than what the queue API reports. This may indicate the ticket-api-service is silently dropping records. Investigate discord-sync-worker webhook delivery and ticket-api-service query correctness."
+
+      - alert: CanaryStale
+        expr: time() - approvals_canary_last_success_seconds > 600
+        for: 2m
+        labels:
+          severity: warning
+          team: sre-release-engineering
+        annotations:
+          summary: "Synthetic canary has not written a record in over 10 minutes"
+          description: "The approvals canary last wrote a synthetic record {{ $value | humanizeDuration }} ago (threshold: 10 minutes / 2 missed cycles). Check discord-sync-worker canary cron and database connectivity."
