@@ -1,0 +1,15 @@
+{
+  "name": "ticket-api-service",
+  "version": "1.0.0",
+  "description": "Ticket API service with approval queue and Prometheus metrics",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "dependencies": {
+    "fastify": "^4.26.0",
+    "pino": "^8.19.0",
+    "pg": "^8.11.3",
+    "prom-client": "^15.1.0"
+  }
+}
