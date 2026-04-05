@@ -18,3 +18,35 @@ jobs:
 
       - name: Lint index.html
         run: htmlhint index.html
+
+  secret-scan:
+    name: Secret Scanning
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  dependency-audit:
+    name: Dependency Vulnerability Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Audit discord-sync-worker
+        working-directory: discord-sync-worker
+        run: npm audit --audit-level=high
+
+      - name: Audit ticket-api-service
+        working-directory: ticket-api-service
+        run: npm audit --audit-level=high
