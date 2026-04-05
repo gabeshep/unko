@@ -1153,7 +1153,11 @@
       console.error(err);
       state.loading = false;
       track('search_failed', { category: state.activeCategory, error: err.message });
-      showError('Could not reach the places database. Check your connection and try again.');
+      showError(
+        'Could not reach the places database. Check your connection and try again.',
+        'Try Again →',
+        fetchSuggestions
+      );
     }
   }
 
@@ -1237,6 +1241,14 @@
         <div class="zero-title">${meta.title}</div>
         <div class="zero-body">${body}</div>
       </div>`;
+    if (actionLabel && actionFn) {
+      document.getElementById('errorActionBtn').addEventListener('click', actionFn);
+    }
+  }
+
+  function showError(msg) {
+    setButtons('error');
+    showZeroState('error', msg);
   }
 
   function showError(msg) {

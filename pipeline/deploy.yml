@@ -34,3 +34,36 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+      - name: Notify deployment status
+        if: always()
+        env:
+          DEPLOY_NOTIFY_SECRET: ${{ secrets.DEPLOY_NOTIFY_SECRET }}
+          DISCORD_SYNC_WORKER_URL: ${{ secrets.DISCORD_SYNC_WORKER_URL }}
+          DEPLOY_STATUS: ${{ job.status }}
+          DEPLOY_URL: ${{ steps.deployment.outputs.page_url }}
+          ACTOR: ${{ github.actor }}
+        run: |
+          if [ -z "$DEPLOY_NOTIFY_SECRET" ]; then
+            echo "DEPLOY_NOTIFY_SECRET is not set"
+            exit 1
+          fi
+
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          COMMIT_MSG=$(git log -1 --format='%s' | head -c 200)
+
+          PAYLOAD=$(jq -cn \
+            --arg s "$DEPLOY_STATUS" \
+            --arg c "$SHORT_SHA" \
+            --arg m "$COMMIT_MSG" \
+            --arg u "$DEPLOY_URL" \
+            --arg a "$ACTOR" \
+            '{status:$s,commit_sha:$c,commit_message:$m,deploy_url:$u,actor:$a}')
+
+          SIGNATURE=$(echo -n "$PAYLOAD" | openssl dgst -sha256 -hmac "$DEPLOY_NOTIFY_SECRET" | awk '{print $2}')
+
+          curl -sf -X POST \
+            -H "Content-Type: application/json" \
+            -H "X-Deploy-Signature: $SIGNATURE" \
+            -d "$PAYLOAD" \
+            "${DISCORD_SYNC_WORKER_URL}/webhook/deploy/notify" || true
