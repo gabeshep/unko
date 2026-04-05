@@ -10,7 +10,7 @@ async function approvalsPlugin(fastify, _opts) {
         COALESCE(json_agg(row_to_json(a)), '[]'::json) AS items
       FROM approvals a
       WHERE status = 'pending'
-        AND tenant_id != '__synthetic__'
+        AND tenant_id IS DISTINCT FROM '__synthetic__'
     `);
 
     const { count, items } = result.rows[0];
@@ -23,7 +23,7 @@ async function approvalsPlugin(fastify, _opts) {
     const result = await db.query(`
       SELECT *
       FROM approvals
-      WHERE tenant_id != '__synthetic__'
+      WHERE tenant_id IS DISTINCT FROM '__synthetic__'
       ORDER BY created_at DESC
       LIMIT 100
     `);
