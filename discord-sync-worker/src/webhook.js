@@ -44,7 +44,13 @@ async function webhookHandler(request, reply) {
 
   const tenant_id = body.tenant_id || 'default';
 
-  await db.writeApproval({ approval_id, status, user_id, tenant_id });
+  try {
+    await db.writeApproval({ approval_id, status, user_id, tenant_id });
+  } catch (err) {
+    request.log.error({ msg: 'writeApproval failed, routing to DLQ', error: err.message });
+    await db.writeDLQ({ payload: body, error_message: err.message });
+    return reply.code(200).send({ ok: true, dlq: true });
+  }
 
   return reply.code(200).send({ ok: true });
 }
