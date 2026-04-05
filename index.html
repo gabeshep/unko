@@ -827,8 +827,8 @@
   const STORAGE_SAVED   = 'unko_saved_places';
 
   function loadProfile() {
-    try { return JSON.parse(localStorage.getItem(STORAGE_PROFILE)) || { name: '' }; }
-    catch { return { name: '' }; }
+    try { return JSON.parse(localStorage.getItem(STORAGE_PROFILE)) || { name: '', email: '' }; }
+    catch { return { name: '', email: '' }; }
   }
 
   function persistProfile(profile) {
@@ -917,7 +917,8 @@
             </div>`;
         }).join('');
 
-    const profileName = profile.name || '';
+    const profileName  = profile.name  || '';
+    const profileEmail = profile.email || '';
     body.innerHTML = `
       <div class="profile-section">
         <div class="section-label">Profile</div>
@@ -925,7 +926,7 @@
           <div class="profile-avatar">🧭</div>
           <div class="profile-name-wrap">
             <div class="profile-name-display">${profileName || 'Anonymous explorer'}</div>
-            <div class="profile-name-hint">${profileName ? 'Your display name' : 'Add your name'}</div>
+            <div class="profile-name-hint">${profileEmail || (profileName ? 'Your display name' : 'Add your name &amp; email')}</div>
           </div>
           <button class="btn-edit-profile" onclick="showProfileEditForm()">Edit</button>
         </div>
@@ -933,7 +934,10 @@
           <input class="profile-name-input" id="profileNameInput" type="text"
             placeholder="Your name" maxlength="32" value="${profileName}"
             onkeydown="if(event.key==='Enter') saveProfileName()">
-          <button class="btn-save-name" onclick="saveProfileName()">Save</button>
+          <input class="profile-name-input" id="profileEmailInput" type="email"
+            placeholder="Your email (optional)" maxlength="128" value="${profileEmail}"
+            onkeydown="if(event.key==='Enter') saveProfileName()">
+          <button class="btn-save-name" onclick="saveProfileName()">Save →</button>
         </div>
       </div>
       <div class="saved-section">
@@ -950,12 +954,15 @@
   }
 
   function saveProfileName() {
-    const input = document.getElementById('profileNameInput');
-    const name = input ? input.value.trim() : '';
+    const nameInput  = document.getElementById('profileNameInput');
+    const emailInput = document.getElementById('profileEmailInput');
+    const name  = nameInput  ? nameInput.value.trim()  : '';
+    const email = emailInput ? emailInput.value.trim() : '';
     const profile = loadProfile();
-    profile.name = name;
+    profile.name  = name;
+    profile.email = email;
     persistProfile(profile);
-    track('profile_name_saved');
+    track('profile_saved', { hasEmail: !!email });
     renderDrawer();
   }
 
@@ -1365,6 +1372,8 @@
       findBtn.classList.remove('hidden');
       saveBtn.classList.remove('hidden');
       if (navigator.share || navigator.clipboard) shareBtn.classList.remove('hidden');
+      nahBtn.textContent = 'Nah, what else →';
+      nahBtn.onclick = nextSuggestion;
       nahBtn.classList.remove('hidden');
       counter.classList.remove('hidden');
       counter.textContent = remaining > 0 ? `${remaining} more nearby` : 'Last one nearby — will refresh';
