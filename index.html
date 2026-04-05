@@ -1251,6 +1251,11 @@
     showZeroState('error', msg);
   }
 
+  function showError(msg) {
+    setButtons('error');
+    showZeroState('error', msg);
+  }
+
   function showSuggestion() {
     const s = state.pool[state.index];
     if (!s) {
