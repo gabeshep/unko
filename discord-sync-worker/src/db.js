@@ -36,6 +36,9 @@ async function writeApproval({ approval_id, status, user_id, tenant_id }) {
   const text = `
     INSERT INTO approvals (approval_id, status, user_id, tenant_id, expires_at)
     VALUES ($1, $2, $3, $4, ${expiresAt})
+    ON CONFLICT (approval_id) DO UPDATE SET
+      status = EXCLUDED.status,
+      user_id = EXCLUDED.user_id
   `;
   const params = [approval_id, status, user_id, tenant_id];
 

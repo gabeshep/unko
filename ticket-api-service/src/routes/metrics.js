@@ -30,18 +30,40 @@ async function metricsPlugin(fastify, _opts) {
       SELECT COUNT(*)::int AS count
       FROM approvals
       WHERE status = 'pending'
-        AND tenant_id != '__synthetic__'
+        AND tenant_id IS DISTINCT FROM '__synthetic__'
     `);
     pendingDbCount.set(pendingResult.rows[0].count);
 
-    // Query 2: same SQL as /approvals/queue
-    const queueResult = await db.query(`
-      SELECT COUNT(*)::int AS count
-      FROM approvals
-      WHERE status = 'pending'
-        AND tenant_id != '__synthetic__'
-    `);
-    queueApiCount.set(queueResult.rows[0].count);
+    // Query 2: count from the /approvals/queue HTTP endpoint (reflects actual API response)
+    await new Promise((resolve) => {
+      const port = process.env.PORT || 3002;
+      const http = require('http');
+      const req = http.get(`http://127.0.0.1:${port}/approvals/queue`, { timeout: 5000 }, (res) => {
+        let raw = '';
+        res.on('data', (chunk) => { raw += chunk; });
+        res.on('end', () => {
+          try {
+            const body = JSON.parse(raw);
+            queueApiCount.set(body.count);
+          } catch (err) {
+            fastify.log.error({ msg: 'metrics: failed to parse /approvals/queue response', err: err.message });
+            queueApiCount.set(-1);
+          }
+          resolve();
+        });
+      });
+      req.on('error', (err) => {
+        fastify.log.error({ msg: 'metrics: internal call to /approvals/queue failed', err: err.message });
+        queueApiCount.set(-1);
+        resolve();
+      });
+      req.on('timeout', () => {
+        fastify.log.error({ msg: 'metrics: internal call to /approvals/queue timed out' });
+        req.destroy();
+        queueApiCount.set(-1);
+        resolve();
+      });
+    });
 
     // Query 3: last canary record epoch
     const canaryResult = await db.query(`
