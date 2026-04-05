@@ -3,6 +3,7 @@
 const fastify = require('fastify');
 const db = require('./db');
 const { webhookHandler } = require('./webhook');
+const { deployNotifyHandler } = require('./deploy-notify');
 const canary = require('./canary');
 
 async function main() {
@@ -18,6 +19,7 @@ async function main() {
 
   // Routes
   app.post('/webhook/discord/approval', webhookHandler);
+  app.post('/webhook/deploy/notify', deployNotifyHandler);
 
   const port = parseInt(process.env.PORT || '3001', 10);
 
