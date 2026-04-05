@@ -17,3 +17,10 @@ variable "release_eng_pagerduty_service_key" {
   sensitive   = true
   default     = ""
 }
+
+variable "security_pagerduty_service_key" {
+  description = "PagerDuty integration key for the Security on-call service."
+  type        = string
+  sensitive   = true
+  default     = ""
+}

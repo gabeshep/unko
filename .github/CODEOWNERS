@@ -1,0 +1,4 @@
+# CODEOWNERS — Require @ciso and @cto approval for changes to the break-glass authorized keys registry.
+# Any modification to authorized-keys.json must be reviewed by both the CISO and CTO
+# before merge to prevent unauthorized key substitution.
+pipeline/break-glass/authorized-keys.json @ciso @cto

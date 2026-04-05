@@ -1,0 +1,30 @@
+{
+  "version": "1",
+  "_note": "REPLACE_BEFORE_ENFORCEMENT: All public_key_pem values are placeholders. Real Ed25519 public keys must be substituted before setting shadow_mode=false. Any modification to this file requires @ciso and @cto approval (enforced via CODEOWNERS).",
+  "keys": [
+    {
+      "key_id": "sre-oncall-2026",
+      "roles": ["sre"],
+      "identity": "sre-oncall@example.com",
+      "public_key_pem": "-----BEGIN PUBLIC KEY-----\nPLACEHOLDER_REPLACE_WITH_REAL_ED25519_PUBLIC_KEY_sre-oncall-2026\n-----END PUBLIC KEY-----"
+    },
+    {
+      "key_id": "release-eng-lead-2026",
+      "roles": ["release-engineering"],
+      "identity": "release-eng-lead@example.com",
+      "public_key_pem": "-----BEGIN PUBLIC KEY-----\nPLACEHOLDER_REPLACE_WITH_REAL_ED25519_PUBLIC_KEY_release-eng-lead-2026\n-----END PUBLIC KEY-----"
+    },
+    {
+      "key_id": "ciso-fallback-2026",
+      "roles": ["sre", "release-engineering"],
+      "identity": "ciso@example.com",
+      "public_key_pem": "-----BEGIN PUBLIC KEY-----\nPLACEHOLDER_REPLACE_WITH_REAL_ED25519_PUBLIC_KEY_ciso-fallback-2026\n-----END PUBLIC KEY-----"
+    },
+    {
+      "key_id": "cto-fallback-2026",
+      "roles": ["sre", "release-engineering"],
+      "identity": "cto@example.com",
+      "public_key_pem": "-----BEGIN PUBLIC KEY-----\nPLACEHOLDER_REPLACE_WITH_REAL_ED25519_PUBLIC_KEY_cto-fallback-2026\n-----END PUBLIC KEY-----"
+    }
+  ]
+}
