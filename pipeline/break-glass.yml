@@ -1,0 +1,156 @@
+name: Break-Glass CI Deployment Bypass
+
+on:
+  workflow_dispatch:
+    inputs:
+      payload:
+        description: 'Exact deployment JSON payload'
+        required: true
+        type: string
+      sre_key_id:
+        description: 'SRE authorized key ID'
+        required: true
+        type: string
+      sre_signature:
+        description: 'SRE Ed25519 signature over payload (hex)'
+        required: true
+        type: string
+      release_eng_key_id:
+        description: 'Release Engineering authorized key ID'
+        required: true
+        type: string
+      release_eng_signature:
+        description: 'Release Engineering Ed25519 signature over payload (hex)'
+        required: true
+        type: string
+      shadow_mode:
+        description: 'Shadow mode (true = log only, no deploy)'
+        required: true
+        type: boolean
+        default: true
+
+jobs:
+  break-glass:
+    name: Break-Glass Authorization
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Verify multi-sig authorization
+        env:
+          BG_PAYLOAD: ${{ inputs.payload }}
+          BG_SRE_KEY_ID: ${{ inputs.sre_key_id }}
+          BG_SRE_SIGNATURE: ${{ inputs.sre_signature }}
+          BG_RELEASE_ENG_KEY_ID: ${{ inputs.release_eng_key_id }}
+          BG_RELEASE_ENG_SIGNATURE: ${{ inputs.release_eng_signature }}
+        run: node pipeline/break-glass/verify-multisig.js
+
+      - name: Compute payload hash and write audit log
+        env:
+          AUDIT_SERVICE_URL: ${{ secrets.AUDIT_SERVICE_URL }}
+          BG_PAYLOAD: ${{ inputs.payload }}
+          BG_SRE_KEY_ID: ${{ inputs.sre_key_id }}
+          BG_RELEASE_ENG_KEY_ID: ${{ inputs.release_eng_key_id }}
+          BG_SHADOW_MODE: ${{ inputs.shadow_mode }}
+        run: |
+          PAYLOAD_HASH=$(node -e "
+            const crypto = require('crypto');
+            const h = crypto.createHash('sha256').update(process.env.BG_PAYLOAD, 'utf8').digest('hex');
+            process.stdout.write(h);
+          ")
+
+          SRE_IDENTITY=$(node -e "
+            const fs = require('fs'), path = require('path');
+            const keys = JSON.parse(fs.readFileSync(path.join('pipeline/break-glass/authorized-keys.json'), 'utf8'));
+            const entry = keys.keys.find(k => k.key_id === process.env.BG_SRE_KEY_ID);
+            process.stdout.write(entry ? entry.identity : '');
+          ")
+
+          RE_IDENTITY=$(node -e "
+            const fs = require('fs'), path = require('path');
+            const keys = JSON.parse(fs.readFileSync(path.join('pipeline/break-glass/authorized-keys.json'), 'utf8'));
+            const entry = keys.keys.find(k => k.key_id === process.env.BG_RELEASE_ENG_KEY_ID);
+            process.stdout.write(entry ? entry.identity : '');
+          ")
+
+          curl -f -X POST "${AUDIT_SERVICE_URL}/break-glass/audit" \
+            -H 'Content-Type: application/json' \
+            -d "{
+              \"payload_hash\": \"${PAYLOAD_HASH}\",
+              \"sre_key_id\": \"${BG_SRE_KEY_ID}\",
+              \"sre_identity\": \"${SRE_IDENTITY}\",
+              \"release_eng_key_id\": \"${BG_RELEASE_ENG_KEY_ID}\",
+              \"release_eng_identity\": \"${RE_IDENTITY}\",
+              \"shadow_mode\": ${BG_SHADOW_MODE}
+            }"
+
+      - name: Send Discord security alert
+        env:
+          SECURITY_DISCORD_WEBHOOK_URL: ${{ secrets.SECURITY_DISCORD_WEBHOOK_URL }}
+          BG_PAYLOAD: ${{ inputs.payload }}
+          BG_SRE_KEY_ID: ${{ inputs.sre_key_id }}
+          BG_RELEASE_ENG_KEY_ID: ${{ inputs.release_eng_key_id }}
+          BG_SHADOW_MODE: ${{ inputs.shadow_mode }}
+        run: |
+          PAYLOAD_HASH=$(node -e "
+            const crypto = require('crypto');
+            const h = crypto.createHash('sha256').update(process.env.BG_PAYLOAD, 'utf8').digest('hex');
+            process.stdout.write(h);
+          ")
+
+          SRE_IDENTITY=$(node -e "
+            const fs = require('fs'), path = require('path');
+            const keys = JSON.parse(fs.readFileSync(path.join('pipeline/break-glass/authorized-keys.json'), 'utf8'));
+            const entry = keys.keys.find(k => k.key_id === process.env.BG_SRE_KEY_ID);
+            process.stdout.write(entry ? entry.identity : process.env.BG_SRE_KEY_ID);
+          ")
+
+          RE_IDENTITY=$(node -e "
+            const fs = require('fs'), path = require('path');
+            const keys = JSON.parse(fs.readFileSync(path.join('pipeline/break-glass/authorized-keys.json'), 'utf8'));
+            const entry = keys.keys.find(k => k.key_id === process.env.BG_RELEASE_ENG_KEY_ID);
+            process.stdout.write(entry ? entry.identity : process.env.BG_RELEASE_ENG_KEY_ID);
+          ")
+
+          TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+          curl -f -X POST "${SECURITY_DISCORD_WEBHOOK_URL}" \
+            -H 'Content-Type: application/json' \
+            -d "{
+              \"embeds\": [{
+                \"title\": \"BREAK-GLASS DEPLOYMENT TRIGGERED\",
+                \"color\": 15158332,
+                \"timestamp\": \"${TIMESTAMP}\",
+                \"fields\": [
+                  { \"name\": \"SRE Identity\", \"value\": \"${SRE_IDENTITY}\", \"inline\": true },
+                  { \"name\": \"Release Eng Identity\", \"value\": \"${RE_IDENTITY}\", \"inline\": true },
+                  { \"name\": \"Payload SHA-256\", \"value\": \"\`${PAYLOAD_HASH}\`\", \"inline\": false },
+                  { \"name\": \"Shadow Mode\", \"value\": \"${BG_SHADOW_MODE}\", \"inline\": true }
+                ]
+              }]
+            }"
+
+      - name: Deploy (shadow mode bypass)
+        if: ${{ inputs.shadow_mode == false }}
+        uses: actions/checkout@v4
+
+      - name: Setup Pages
+        if: ${{ inputs.shadow_mode == false }}
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact
+        if: ${{ inputs.shadow_mode == false }}
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+      - name: Deploy to GitHub Pages
+        if: ${{ inputs.shadow_mode == false }}
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,6 +1,13 @@
 'use strict';
 
+const promClient = require('prom-client');
 const db = require('../db');
+
+const breakGlassCounter = new promClient.Counter({
+  name: 'break_glass_invocations_total',
+  help: 'Total number of break-glass audit log entries written',
+  labelNames: ['shadow_mode'],
+});
 
 async function approvalsPlugin(fastify, _opts) {
   fastify.get('/approvals/queue', async (request, reply) => {
@@ -31,18 +38,47 @@ async function approvalsPlugin(fastify, _opts) {
     return reply.code(200).send({ items: result.rows });
   });
 
-  fastify.get('/approvals/dead-letter', async (request, reply) => {
-    const result = await db.query(`
-      SELECT id, payload, error_message, created_at
-      FROM dead_letter_queue
-      ORDER BY created_at DESC
-      LIMIT 100
-    `);
+  fastify.post('/break-glass/audit', async (request, reply) => {
+    const {
+      payload_hash,
+      sre_key_id,
+      sre_identity,
+      release_eng_key_id,
+      release_eng_identity,
+      shadow_mode,
+    } = request.body || {};
 
-    const count = result.rows.length;
-    fastify.log.info({ msg: 'dead-letter queue fetched', count });
+    if (
+      payload_hash === undefined ||
+      sre_key_id === undefined ||
+      sre_identity === undefined ||
+      release_eng_key_id === undefined ||
+      release_eng_identity === undefined ||
+      shadow_mode === undefined
+    ) {
+      return reply.code(400).send({ error: 'Missing required fields' });
+    }
 
-    return reply.code(200).send({ count, items: result.rows });
+    const result = await db.query(
+      `INSERT INTO break_glass_audit_log
+         (payload_hash, sre_key_id, sre_identity, release_eng_key_id, release_eng_identity, shadow_mode)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING id`,
+      [payload_hash, sre_key_id, sre_identity, release_eng_key_id, release_eng_identity, shadow_mode]
+    );
+
+    const id = result.rows[0].id;
+    breakGlassCounter.inc({ shadow_mode: String(shadow_mode) });
+
+    fastify.log.info({
+      event: 'break_glass_audit_written',
+      shadow_mode,
+      sre_key_id,
+      release_eng_key_id,
+      payload_hash,
+    });
+
+    return reply.code(200).send({ ok: true, id });
   });
 }
 
