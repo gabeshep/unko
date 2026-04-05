@@ -321,6 +321,20 @@
 
     .error-icon { font-size: 44px; }
     .error-msg  { font-size: 14px; color: var(--muted); line-height: 1.65; max-width: 280px; }
+    .error-action {
+      margin-top: 4px;
+      padding: 10px 22px;
+      border-radius: 12px;
+      border: 1.5px solid var(--gold);
+      background: transparent;
+      color: var(--gold);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+    .error-action:hover { background: var(--gold); color: var(--bg); }
 
     /* ── ACTIONS ─────────────────────────────── */
     .actions {
@@ -1007,7 +1021,11 @@
       },
       () => {
         setLocationLabel('Enable location', false);
-        showError('Location access is needed to find things near you.<br>Please allow location and refresh the page.');
+        showError(
+          'Location access is needed to find things near you.<br>Please allow location and try again.',
+          'Retry Location →',
+          () => { setLocationLabel('Locating you…', false); initLocation(); }
+        );
         track('location_denied');
       },
       { enableHighAccuracy: false, timeout: 12000 }
@@ -1118,7 +1136,11 @@
       pool = pool.filter(el => !state.seenIds.has(el.id));
 
       if (pool.length === 0) {
-        showError("Nothing found nearby. Try a different category, or check back when you're somewhere with more going on.");
+        showError(
+        "Nothing found nearby. Try a different category, or check back when you're somewhere with more going on.",
+        'Search Again →',
+        () => { state.seenIds.clear(); fetchSuggestions(); }
+      );
         track('search_empty', { category: state.activeCategory });
         state.loading = false;
         return;
@@ -1136,7 +1158,11 @@
       console.error(err);
       state.loading = false;
       track('search_failed', { category: state.activeCategory, error: err.message });
-      showError('Could not reach the places database. Check your connection and try again.');
+      showError(
+        'Could not reach the places database. Check your connection and try again.',
+        'Try Again →',
+        fetchSuggestions
+      );
     }
   }
 
@@ -1199,13 +1225,20 @@
       </div>`;
   }
 
-  function showError(msg) {
+  function showError(msg, actionLabel, actionFn) {
     setButtons('error');
+    const actionHtml = actionLabel
+      ? `<button class="error-action" id="errorActionBtn">${actionLabel}</button>`
+      : '';
     document.getElementById('cardArea').innerHTML = `
       <div class="error-card">
         <div class="error-icon">🗺️</div>
         <div class="error-msg">${msg}</div>
+        ${actionHtml}
       </div>`;
+    if (actionLabel && actionFn) {
+      document.getElementById('errorActionBtn').addEventListener('click', actionFn);
+    }
   }
 
   function showSuggestion() {
