@@ -30,6 +30,20 @@ async function approvalsPlugin(fastify, _opts) {
 
     return reply.code(200).send({ items: result.rows });
   });
+
+  fastify.get('/approvals/dead-letter', async (request, reply) => {
+    const result = await db.query(`
+      SELECT id, payload, error_message, created_at
+      FROM dead_letter_queue
+      ORDER BY created_at DESC
+      LIMIT 100
+    `);
+
+    const count = result.rows.length;
+    fastify.log.info({ msg: 'dead-letter queue fetched', count });
+
+    return reply.code(200).send({ count, items: result.rows });
+  });
 }
 
 module.exports = approvalsPlugin;
