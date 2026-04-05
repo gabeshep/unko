@@ -147,52 +147,81 @@
       overflow: hidden;
     }
 
-    /* Start screen */
-    .start-screen {
+    /* ── ZERO STATE (unified empty / error / start states) ── */
+    .zero-state {
       text-align: center;
       display: flex;
       flex-direction: column;
       align-items: center;
       gap: 14px;
       padding: 0 16px;
+      width: 100%;
     }
 
-    .compass-wrap {
+    .zero-icon-wrap {
       position: relative;
-      width: 80px; height: 80px;
+      width: 88px; height: 88px;
       display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
     }
 
-    .compass-ring {
+    .zero-ring {
       position: absolute;
       inset: 0;
       border-radius: 50%;
       border: 1.5px solid rgba(232,146,10,0.2);
       animation: pulse-ring 2.5s ease-in-out infinite;
     }
-    .compass-ring:nth-child(2) { inset: -10px; border-color: rgba(232,146,10,0.1); animation-delay: 0.5s; }
-    .compass-ring:nth-child(3) { inset: -20px; border-color: rgba(232,146,10,0.06); animation-delay: 1s; }
+    .zero-ring:nth-child(2) { inset: -11px; border-color: rgba(232,146,10,0.1);  animation-delay: 0.5s; }
+    .zero-ring:nth-child(3) { inset: -22px; border-color: rgba(232,146,10,0.05); animation-delay: 1s;   }
+
+    /* Muted rings for error / empty variants */
+    .zero-state[data-variant="error"]   .zero-ring,
+    .zero-state[data-variant="empty"]   .zero-ring,
+    .zero-state[data-variant="location"] .zero-ring {
+      border-color: rgba(136,136,136,0.15);
+      animation: none;
+    }
+    .zero-state[data-variant="error"]    .zero-ring:nth-child(2),
+    .zero-state[data-variant="empty"]    .zero-ring:nth-child(2),
+    .zero-state[data-variant="location"] .zero-ring:nth-child(2) { border-color: rgba(136,136,136,0.08); }
+    .zero-state[data-variant="error"]    .zero-ring:nth-child(3),
+    .zero-state[data-variant="empty"]    .zero-ring:nth-child(3),
+    .zero-state[data-variant="location"] .zero-ring:nth-child(3) { border-color: rgba(136,136,136,0.04); }
 
     @keyframes pulse-ring {
       0%, 100% { opacity: 1; transform: scale(1); }
       50%       { opacity: 0.4; transform: scale(1.05); }
     }
 
-    .compass-emoji { font-size: 42px; position: relative; z-index: 1; }
+    .zero-icon { font-size: 44px; position: relative; z-index: 1; line-height: 1; }
 
-    .start-tagline {
+    .zero-title {
       font-family: 'Playfair Display', serif;
-      font-size: 28px;
+      font-size: 26px;
       font-weight: 700;
       line-height: 1.2;
       color: var(--cream);
     }
 
-    .start-sub {
+    .zero-body {
       font-size: 14px;
       color: var(--muted);
       line-height: 1.65;
-      max-width: 260px;
+      max-width: 268px;
+    }
+
+    .zero-hint {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--muted);
+      background: var(--surface);
+      border: 1px solid var(--surface-2);
+      border-radius: 100px;
+      padding: 5px 12px;
+      letter-spacing: 0.02em;
     }
 
     /* Suggestion card */
@@ -305,22 +334,7 @@
       text-align: center;
     }
 
-    /* Error */
-    .error-card {
-      width: 100%;
-      background: var(--surface);
-      border-radius: var(--radius);
-      padding: 40px 28px;
-      border: 1px solid var(--surface-2);
-      text-align: center;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .error-icon { font-size: 44px; }
-    .error-msg  { font-size: 14px; color: var(--muted); line-height: 1.65; max-width: 280px; }
+    /* (error-card removed — unified into .zero-state) */
 
     /* ── ACTIONS ─────────────────────────────── */
     .actions {
@@ -748,15 +762,15 @@
 
   <!-- Main card area -->
   <div class="card-area" id="cardArea">
-    <div class="start-screen" id="startScreen">
-      <div class="compass-wrap">
-        <div class="compass-ring"></div>
-        <div class="compass-ring"></div>
-        <div class="compass-ring"></div>
-        <span class="compass-emoji">🧭</span>
+    <div class="zero-state" data-variant="start">
+      <div class="zero-icon-wrap">
+        <div class="zero-ring"></div>
+        <div class="zero-ring"></div>
+        <div class="zero-ring"></div>
+        <span class="zero-icon">🧭</span>
       </div>
-      <div class="start-tagline">What's your next adventure?</div>
-      <div class="start-sub">Pick a category above, or leave it open to be surprised.</div>
+      <div class="zero-title">What's your next adventure?</div>
+      <div class="zero-body">Pick a category above, or leave it open to be surprised.</div>
     </div>
   </div>
 
@@ -1007,7 +1021,8 @@
       },
       () => {
         setLocationLabel('Enable location', false);
-        showError('Location access is needed to find things near you.<br>Please allow location and refresh the page.');
+        setButtons('error');
+        showZeroState('location', 'Allow location access in your browser settings, then refresh the page to find places near you.');
         track('location_denied');
       },
       { enableHighAccuracy: false, timeout: 12000 }
@@ -1086,7 +1101,8 @@
 
   async function fetchSuggestions() {
     if (!state.locationReady) {
-      showError('Still waiting for your location. Please allow location access and try again.');
+      setButtons('error');
+      showZeroState('location', 'Still waiting for your location. Please allow location access and try again.');
       return;
     }
     if (state.loading) return;
@@ -1118,7 +1134,8 @@
       pool = pool.filter(el => !state.seenIds.has(el.id));
 
       if (pool.length === 0) {
-        showError("Nothing found nearby. Try a different category, or check back when you're somewhere with more going on.");
+        setButtons('error');
+        showZeroState('empty', "Try a different category, or check back when you're somewhere with more going on.");
         track('search_empty', { category: state.activeCategory });
         state.loading = false;
         return;
@@ -1199,13 +1216,32 @@
       </div>`;
   }
 
+  // variant: 'start' | 'location' | 'empty' | 'error'
+  const ZERO_STATE_META = {
+    start:    { icon: '🧭', title: 'What\'s your next adventure?', rings: true  },
+    location: { icon: '📍', title: 'Location needed',              rings: false },
+    empty:    { icon: '🔍', title: 'Nothing found nearby',         rings: false },
+    error:    { icon: '⚡', title: 'Something went wrong',         rings: false },
+  };
+
+  function showZeroState(variant, body) {
+    const meta = ZERO_STATE_META[variant] || ZERO_STATE_META.error;
+    document.getElementById('cardArea').innerHTML = `
+      <div class="zero-state" data-variant="${variant}">
+        <div class="zero-icon-wrap">
+          <div class="zero-ring"></div>
+          <div class="zero-ring"></div>
+          <div class="zero-ring"></div>
+          <span class="zero-icon">${meta.icon}</span>
+        </div>
+        <div class="zero-title">${meta.title}</div>
+        <div class="zero-body">${body}</div>
+      </div>`;
+  }
+
   function showError(msg) {
     setButtons('error');
-    document.getElementById('cardArea').innerHTML = `
-      <div class="error-card">
-        <div class="error-icon">🗺️</div>
-        <div class="error-msg">${msg}</div>
-      </div>`;
+    showZeroState('error', msg);
   }
 
   function showSuggestion() {
