@@ -50,3 +50,27 @@ jobs:
       - name: Audit ticket-api-service
         working-directory: ticket-api-service
         run: npm audit --audit-level=high
+
+  # Phase 1 (shadow mode): continue-on-error: true — monitoring for flakiness and duration.
+  # Phase 2: Remove continue-on-error to make this a hard-blocking gate.
+  webhook-integration-tests:
+    name: Webhook Integration Tests (Shadow Mode)
+    runs-on: ubuntu-latest
+    continue-on-error: true  # Phase 1: shadow mode — runs but does not block merges
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        working-directory: discord-sync-worker
+        run: npm install
+
+      - name: Run webhook integration tests
+        working-directory: discord-sync-worker
+        env:
+          DISCORD_WEBHOOK_SECRET: test-secret-ci-placeholder
+        run: npm test
