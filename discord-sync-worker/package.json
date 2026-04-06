@@ -4,7 +4,11 @@
   "description": "Discord webhook approval sync worker with synthetic canary monitoring",
   "main": "src/index.js",
   "scripts": {
-    "start": "node src/index.js"
+    "start": "node src/index.js",
+    "test": "jest --testPathPattern=tests/"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
   },
   "dependencies": {
     "fastify": "^4.26.0",
