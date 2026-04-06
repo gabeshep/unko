@@ -420,6 +420,43 @@
 
     .hidden { display: none !important; }
 
+    /* ── INCIDENT BANNER ────────────────────── */
+    .incident-banner {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 200;
+      background: var(--surface);
+      border-bottom: 2px solid #E8920A;
+      padding: 10px 16px;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      font-size: 13px;
+      color: var(--cream);
+      line-height: 1.55;
+    }
+
+    .incident-banner-text {
+      flex: 1;
+    }
+
+    .incident-banner-dismiss {
+      flex-shrink: 0;
+      background: transparent;
+      border: 1.5px solid var(--surface-2);
+      border-radius: 8px;
+      color: var(--muted);
+      font-size: 13px;
+      cursor: pointer;
+      padding: 2px 8px;
+      line-height: 1.5;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .incident-banner-dismiss:hover { border-color: var(--muted); color: var(--cream); }
+
     /* ── PROFILE BUTTON ──────────────────────── */
     .btn-profile {
       width: 38px; height: 38px;
@@ -727,6 +764,16 @@
   </style>
 </head>
 <body>
+
+<!-- Incident banner — shown until dismissed, controlled by JS below -->
+<div id="incident-banner" class="incident-banner" style="display:none;" role="alert" aria-live="polite">
+  <div class="incident-banner-text">
+    <strong>Service disruption resolved (Apr 4–6).</strong>
+    Approval requests were held for up to 36 hours due to a routing issue. Fixes including automatic retry queues and an emergency deployment bypass process are now live. If you have approvals still showing as Pending, open them and tap Re-submit — they will process immediately.
+  </div>
+  <button class="incident-banner-dismiss" id="incident-banner-dismiss" aria-label="Dismiss incident notice">Dismiss</button>
+</div>
+
 <div id="app">
 
   <!-- Header -->
@@ -1455,6 +1502,30 @@
       }).catch(() => {});
     }
   }
+
+  // ─────────────────────────────────────────────────────────
+  // INCIDENT BANNER — dismissible, keyed to incident 8603baf1
+  // ─────────────────────────────────────────────────────────
+  const INCIDENT_BANNER_DISMISSED_KEY = 'incident_banner_dismissed_8603baf1';
+  const INCIDENT_BANNER_SHOWN_AT_KEY  = 'incident_banner_shown_at_8603baf1';
+
+  document.addEventListener('DOMContentLoaded', function () {
+    var banner = document.getElementById('incident-banner');
+    var dismissBtn = document.getElementById('incident-banner-dismiss');
+
+    if (!banner || !dismissBtn) return;
+
+    var dismissed = localStorage.getItem(INCIDENT_BANNER_DISMISSED_KEY);
+    if (!dismissed) {
+      banner.style.display = 'flex';
+      localStorage.setItem(INCIDENT_BANNER_SHOWN_AT_KEY, String(Date.now()));
+    }
+
+    dismissBtn.addEventListener('click', function () {
+      localStorage.setItem(INCIDENT_BANNER_DISMISSED_KEY, 'true');
+      banner.style.display = 'none';
+    });
+  });
 
   // ─────────────────────────────────────────────────────────
   // INIT
