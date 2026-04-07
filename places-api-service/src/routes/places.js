@@ -72,6 +72,51 @@ async function placesPlugin(fastify) {
 
   // Health check
   fastify.get('/health', async () => ({ status: 'ok' }));
+
+  // Deep health check — verifies FOURSQUARE_API_KEY is present and that Foursquare is reachable
+  fastify.get('/health/deep', async (request, reply) => {
+    const apiKey = process.env.FOURSQUARE_API_KEY;
+
+    if (!apiKey) {
+      const status = 'degraded';
+      const checks = { api_key: 'missing', foursquare_connectivity: 'skipped' };
+      fastify.log.info({ event: 'health_check_deep', status, checks });
+      return reply.code(503).send({ status, checks });
+    }
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 3000);
+
+    let res;
+    try {
+      res = await fetch(
+        'https://api.foursquare.com/v3/places/search?ll=48.8566,2.3522&categories=13000&limit=1&fields=fsq_id',
+        {
+          headers: { Authorization: `Bearer ${apiKey}`, Accept: 'application/json' },
+          signal: controller.signal,
+        },
+      );
+    } catch (err) {
+      clearTimeout(timer);
+      const status = 'degraded';
+      const checks = { api_key: 'configured', foursquare_connectivity: 'timeout' };
+      fastify.log.info({ event: 'health_check_deep', status, checks });
+      return reply.code(503).send({ status, checks });
+    }
+    clearTimeout(timer);
+
+    if (!res.ok) {
+      const status = 'degraded';
+      const checks = { api_key: 'configured', foursquare_connectivity: `http_${res.status}` };
+      fastify.log.info({ event: 'health_check_deep', status, checks });
+      return reply.code(503).send({ status, checks });
+    }
+
+    const status = 'ok';
+    const checks = { api_key: 'configured', foursquare_connectivity: 'ok' };
+    fastify.log.info({ event: 'health_check_deep', status, checks });
+    return reply.code(200).send({ status, checks });
+  });
 }
 
 module.exports = placesPlugin;
