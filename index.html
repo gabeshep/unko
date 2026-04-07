@@ -1002,7 +1002,6 @@
       : savedPlaces.map(p => {
           const emoji = catEmoji[p.cat] || '📍';
           const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.name)}+${p.lat},${p.lon}`;
-          const escapedName = p.name.replace(/'/g, "\\'");
           return `
             <div class="saved-place-item" id="saved-${p.id}">
               <div class="saved-place-icon">${emoji}</div>
@@ -1473,7 +1472,15 @@
     } catch (err) {
         console.error('showSuggestion render error:', err);
         state.index++;
-        showSuggestion();
+        if (state.index < state.pool.length) {
+          showSuggestion();
+        } else {
+          showError(
+            'Could not display any suggestions nearby. Try refreshing to search again.',
+            'Try Again →',
+            fetchSuggestions
+          );
+        }
     }
   }
 
@@ -1560,7 +1567,14 @@
     if (!s) return;
     track('navigation_opened', { category: s.cat, position: state.index });
     const url = `https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lon}`;
-    window.open(url, '_blank');
+    const win = window.open(url, '_blank');
+    if (!win) {
+      showError(
+        'Your browser blocked the map from opening. Allow pop-ups for this site, then try again.',
+        'Try Again →',
+        confirmGo
+      );
+    }
   }
 
   function cancelGo() {
