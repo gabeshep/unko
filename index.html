@@ -1157,9 +1157,17 @@
       }
 
       // Filter out already-seen suggestions
+      const unfilteredCount = pool.length;
       pool = pool.filter(el => !state.seenIds.has(el.id));
 
       if (pool.length === 0) {
+        if (unfilteredCount > 0) {
+          // All results have been seen — clear seenIds and cycle through again
+          state.seenIds.clear();
+          state.loading = false;
+          fetchSuggestions();
+          return;
+        }
         setButtons('error');
         showZeroState('empty', "Try a different category, or check back when you're somewhere with more going on.");
         track('search_empty', { category: state.activeCategory });
