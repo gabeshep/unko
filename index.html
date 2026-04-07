@@ -1378,8 +1378,11 @@
     error:    { icon: '⚡', title: 'Something went wrong',         rings: false },
   };
 
-  function showZeroState(variant, body) {
+  function showZeroState(variant, body, actionLabel, actionFn) {
     const meta = ZERO_STATE_META[variant] || ZERO_STATE_META.error;
+    const actionHtml = actionLabel
+      ? `<button id="errorActionBtn" class="btn-go" style="margin-top:4px;max-width:220px">${actionLabel}</button>`
+      : '';
     document.getElementById('cardArea').innerHTML = `
       <div class="zero-state" data-variant="${variant}">
         <div class="zero-icon-wrap">
@@ -1390,20 +1393,16 @@
         </div>
         <div class="zero-title">${meta.title}</div>
         <div class="zero-body">${body}</div>
+        ${actionHtml}
       </div>`;
     if (actionLabel && actionFn) {
       document.getElementById('errorActionBtn').addEventListener('click', actionFn);
     }
   }
 
-  function showError(msg) {
+  function showError(msg, actionLabel, actionFn) {
     setButtons('error');
-    showZeroState('error', msg);
-  }
-
-  function showError(msg) {
-    setButtons('error');
-    showZeroState('error', msg);
+    showZeroState('error', msg, actionLabel, actionFn);
   }
 
   function showSuggestion() {
