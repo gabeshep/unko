@@ -1268,9 +1268,17 @@
       }
 
       // Filter out already-seen suggestions
+      const unfilteredCount = pool.length;
       pool = pool.filter(el => !state.seenIds.has(el.id));
 
       if (pool.length === 0) {
+        if (unfilteredCount > 0) {
+          // All results have been seen — clear seenIds and cycle through again
+          state.seenIds.clear();
+          state.loading = false;
+          fetchSuggestions();
+          return;
+        }
         setButtons('error');
         const emptyMsg = state.openNow
           ? "Nothing open nearby right now. Try turning off the Open now filter, or check back later."
