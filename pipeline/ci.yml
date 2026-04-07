@@ -51,6 +51,33 @@ jobs:
         working-directory: ticket-api-service
         run: npm audit --audit-level=high
 
+  e2e-smoke-tests:
+    name: E2E Smoke Tests (Governance Flow)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install discord-sync-worker dependencies
+        working-directory: discord-sync-worker
+        run: npm install
+
+      - name: Install ticket-api-service dependencies
+        working-directory: ticket-api-service
+        run: npm install
+
+      - name: Install e2e dependencies
+        working-directory: e2e
+        run: npm install
+
+      - name: Run e2e smoke tests
+        working-directory: e2e
+        run: npm test
+
   # Phase 1 (shadow mode): continue-on-error: true — monitoring for flakiness and duration.
   # Phase 2: Remove continue-on-error to make this a hard-blocking gate.
   webhook-integration-tests:
