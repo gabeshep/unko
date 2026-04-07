@@ -1270,12 +1270,14 @@
   }
 
   function interleave(...arrays) {
-    const result = [];
-    const max = Math.max(...arrays.map(a => a.length));
-    for (let i = 0; i < max; i++) {
-      for (const arr of arrays) { if (arr[i]) result.push(arr[i]); }
-    }
-    return result;
+    // Weight proportionally by array length so larger categories appear more
+    // frequently throughout the pool, not just at the end after smaller ones
+    // are exhausted (fixes uneven early-pool representation).
+    const tagged = arrays.flatMap((arr, catIdx) =>
+      arr.map((item, i) => ({ item, sort: (i + 0.5) / arr.length, catIdx }))
+    );
+    tagged.sort((a, b) => a.sort - b.sort || a.catIdx - b.catIdx);
+    return tagged.map(t => t.item);
   }
 
   const catEmoji  = { do: '🎯', eat: '🍽️', see: '👁️' };
