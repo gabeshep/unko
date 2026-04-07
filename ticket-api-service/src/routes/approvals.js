@@ -1,5 +1,6 @@
 'use strict';
 
+const http = require('http');
 const promClient = require('prom-client');
 const db = require('../db');
 
@@ -36,6 +37,64 @@ async function approvalsPlugin(fastify, _opts) {
     `);
 
     return reply.code(200).send({ items: result.rows });
+  });
+
+  fastify.get('/sync-status', async (request, reply) => {
+    // Direct DB count
+    const dbResult = await db.query(`
+      SELECT COUNT(*)::int AS count
+      FROM approvals
+      WHERE status = 'pending'
+        AND tenant_id IS DISTINCT FROM '__synthetic__'
+    `);
+    const dbCount = dbResult.rows[0].count;
+
+    // API count via internal HTTP call to /approvals/queue
+    const port = process.env.PORT || 3002;
+    let apiCount;
+    let apiError = null;
+    try {
+      apiCount = await new Promise((resolve, reject) => {
+        const req = http.get(`http://127.0.0.1:${port}/approvals/queue`, { timeout: 5000 }, (res) => {
+          let raw = '';
+          res.on('data', (chunk) => { raw += chunk; });
+          res.on('end', () => {
+            try {
+              resolve(JSON.parse(raw).count);
+            } catch (err) {
+              reject(err);
+            }
+          });
+        });
+        req.on('error', reject);
+        req.on('timeout', () => { req.destroy(); reject(new Error('timeout')); });
+      });
+    } catch (err) {
+      apiError = err.message;
+    }
+
+    if (apiError !== null) {
+      fastify.log.error({ event: 'sync_status_check', db_count: dbCount, api_error: apiError });
+      return reply.code(503).send({
+        sync: 'error',
+        db_count: dbCount,
+        api_count: null,
+        drift: null,
+        error: apiError,
+      });
+    }
+
+    const drift = dbCount - apiCount;
+    const inSync = drift === 0;
+
+    fastify.log.info({ event: 'sync_status_check', db_count: dbCount, api_count: apiCount, drift, in_sync: inSync });
+
+    return reply.code(inSync ? 200 : 503).send({
+      sync: inSync ? 'ok' : 'drift',
+      db_count: dbCount,
+      api_count: apiCount,
+      drift,
+    });
   });
 
   fastify.post('/break-glass/audit', async (request, reply) => {
