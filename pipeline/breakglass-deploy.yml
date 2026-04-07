@@ -45,10 +45,57 @@ jobs:
 
           echo "All changed files are within allowed break-glass scope."
 
+  verify-multisig:
+    name: Verify 2-of-2 Multi-Sig Authorization
+    runs-on: ubuntu-latest
+    needs: validate-scope
+    outputs:
+      sre_key_id: ${{ steps.extract-sigs.outputs.sre_key_id }}
+      release_eng_key_id: ${{ steps.extract-sigs.outputs.release_eng_key_id }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Extract signatures from PR body
+        id: extract-sigs
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          extract() {
+            echo "$PR_BODY" | grep -oP "(?<=\*\*${1}:\*\* ).*" | head -1 | xargs
+          }
+          SRE_KEY_ID=$(extract SRE_KEY_ID)
+          SRE_SIG=$(extract SRE_SIGNATURE)
+          RE_KEY_ID=$(extract RELEASE_ENG_KEY_ID)
+          RE_SIG=$(extract RELEASE_ENG_SIGNATURE)
+
+          if [ -z "$SRE_KEY_ID" ] || [ -z "$SRE_SIG" ] || [ -z "$RE_KEY_ID" ] || [ -z "$RE_SIG" ]; then
+            echo "ERROR: SRE_KEY_ID, SRE_SIGNATURE, RELEASE_ENG_KEY_ID, and RELEASE_ENG_SIGNATURE are all required in the PR body."
+            exit 1
+          fi
+
+          echo "sre_key_id=$SRE_KEY_ID" >> "$GITHUB_OUTPUT"
+          echo "sre_signature=$SRE_SIG" >> "$GITHUB_OUTPUT"
+          echo "release_eng_key_id=$RE_KEY_ID" >> "$GITHUB_OUTPUT"
+          echo "release_eng_signature=$RE_SIG" >> "$GITHUB_OUTPUT"
+
+      - name: Verify multi-sig authorization
+        env:
+          BG_PAYLOAD: ${{ github.event.pull_request.head.sha }}
+          BG_SRE_KEY_ID: ${{ steps.extract-sigs.outputs.sre_key_id }}
+          BG_SRE_SIGNATURE: ${{ steps.extract-sigs.outputs.sre_signature }}
+          BG_RELEASE_ENG_KEY_ID: ${{ steps.extract-sigs.outputs.release_eng_key_id }}
+          BG_RELEASE_ENG_SIGNATURE: ${{ steps.extract-sigs.outputs.release_eng_signature }}
+        run: node pipeline/break-glass/verify-multisig.js
+
   emit-audit-log:
     name: Emit Immutable Audit Log
     runs-on: ubuntu-latest
-    needs: validate-scope
+    needs: verify-multisig
     permissions:
       id-token: write
       contents: read
@@ -66,11 +113,32 @@ jobs:
         env:
           PR_BODY: ${{ github.event.pull_request.body }}
         run: |
-          REASON=$(echo "$PR_BODY" | grep -oP '(?<=BREAKGLASS_REASON:).*' | head -1 | xargs)
+          REASON=$(echo "$PR_BODY" | grep -oP '(?<=\*\*BREAKGLASS_REASON:\*\* ).*' | head -1 | xargs)
           if [ -z "$REASON" ]; then
             REASON="(not provided)"
           fi
           echo "reason=$REASON" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve signer identities from authorized keys
+        id: identities
+        env:
+          BG_SRE_KEY_ID: ${{ needs.verify-multisig.outputs.sre_key_id }}
+          BG_RELEASE_ENG_KEY_ID: ${{ needs.verify-multisig.outputs.release_eng_key_id }}
+        run: |
+          SRE_IDENTITY=$(node -e "
+            const fs = require('fs'), path = require('path');
+            const keys = JSON.parse(fs.readFileSync('pipeline/break-glass/authorized-keys.json', 'utf8'));
+            const entry = keys.keys.find(k => k.key_id === process.env.BG_SRE_KEY_ID);
+            process.stdout.write(entry ? entry.identity : process.env.BG_SRE_KEY_ID);
+          ")
+          RE_IDENTITY=$(node -e "
+            const fs = require('fs'), path = require('path');
+            const keys = JSON.parse(fs.readFileSync('pipeline/break-glass/authorized-keys.json', 'utf8'));
+            const entry = keys.keys.find(k => k.key_id === process.env.BG_RELEASE_ENG_KEY_ID);
+            process.stdout.write(entry ? entry.identity : process.env.BG_RELEASE_ENG_KEY_ID);
+          ")
+          echo "sre_identity=$SRE_IDENTITY" >> "$GITHUB_OUTPUT"
+          echo "release_eng_identity=$RE_IDENTITY" >> "$GITHUB_OUTPUT"
 
       - name: Write audit log entry to CloudWatch
         env:
@@ -80,6 +148,10 @@ jobs:
           ACTOR: ${{ github.actor }}
           LABELS: ${{ toJson(github.event.pull_request.labels.*.name) }}
           REASON: ${{ steps.extract-reason.outputs.reason }}
+          SRE_KEY_ID: ${{ needs.verify-multisig.outputs.sre_key_id }}
+          SRE_IDENTITY: ${{ steps.identities.outputs.sre_identity }}
+          RELEASE_ENG_KEY_ID: ${{ needs.verify-multisig.outputs.release_eng_key_id }}
+          RELEASE_ENG_IDENTITY: ${{ steps.identities.outputs.release_eng_identity }}
         run: |
           LOG_GROUP="/breakglass/audit-log"
           LOG_STREAM="pr-${PR_NUMBER}"
@@ -95,7 +167,11 @@ jobs:
             --argjson labels "$LABELS" \
             --arg timestamp "$TIMESTAMP_ISO" \
             --arg reason "$REASON" \
-            '{event: $event, actor: $actor, pr_number: $pr_number, pr_title: $pr_title, commit_sha: $commit_sha, labels: $labels, timestamp: $timestamp, reason: $reason}')
+            --arg sre_key_id "$SRE_KEY_ID" \
+            --arg sre_identity "$SRE_IDENTITY" \
+            --arg release_eng_key_id "$RELEASE_ENG_KEY_ID" \
+            --arg release_eng_identity "$RELEASE_ENG_IDENTITY" \
+            '{event: $event, actor: $actor, pr_number: $pr_number, pr_title: $pr_title, commit_sha: $commit_sha, labels: $labels, timestamp: $timestamp, reason: $reason, sre_key_id: $sre_key_id, sre_identity: $sre_identity, release_eng_key_id: $release_eng_key_id, release_eng_identity: $release_eng_identity}')
 
           # Create log stream (idempotent — ignore AlreadyExistsException)
           aws logs create-log-stream \
