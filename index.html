@@ -4,6 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>Unko — Find your next adventure</title>
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#E8920A">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Unko">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet">
@@ -1586,28 +1591,14 @@
   }
 
   // ─────────────────────────────────────────────────────────
-  // INCIDENT BANNER — dismissible, keyed to incident 8603baf1
   // ─────────────────────────────────────────────────────────
-  const INCIDENT_BANNER_DISMISSED_KEY = 'incident_banner_dismissed_8603baf1';
-  const INCIDENT_BANNER_SHOWN_AT_KEY  = 'incident_banner_shown_at_8603baf1';
-
-  document.addEventListener('DOMContentLoaded', function () {
-    var banner = document.getElementById('incident-banner');
-    var dismissBtn = document.getElementById('incident-banner-dismiss');
-
-    if (!banner || !dismissBtn) return;
-
-    var dismissed = localStorage.getItem(INCIDENT_BANNER_DISMISSED_KEY);
-    if (!dismissed) {
-      banner.style.display = 'flex';
-      localStorage.setItem(INCIDENT_BANNER_SHOWN_AT_KEY, String(Date.now()));
-    }
-
-    dismissBtn.addEventListener('click', function () {
-      localStorage.setItem(INCIDENT_BANNER_DISMISSED_KEY, 'true');
-      banner.style.display = 'none';
+  // SERVICE WORKER REGISTRATION
+  // ─────────────────────────────────────────────────────────
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
     });
-  });
+  }
 
   // ─────────────────────────────────────────────────────────
   // INIT
