@@ -5,11 +5,14 @@
   "scripts": {
     "test": "jest"
   },
+  "dependencies": {
+    "fastify": "^4.26.0"
+  },
   "devDependencies": {
     "jest": "^29.7.0"
   },
   "jest": {
     "testEnvironment": "node",
-    "testMatch": ["**/*.smoke.test.js"]
+    "testMatch": ["**/*.smoke.test.js", "**/*.consumer.test.js"]
   }
 }
