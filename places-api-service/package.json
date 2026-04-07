@@ -4,10 +4,14 @@
   "description": "Lightweight backend proxy for Foursquare Places API — keeps the API key server-side",
   "main": "src/index.js",
   "scripts": {
-    "start": "node src/index.js"
+    "start": "node src/index.js",
+    "test": "jest --testPathPattern=tests/"
   },
   "dependencies": {
     "fastify": "^4.26.0",
     "pino": "^8.19.0"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
   }
 }

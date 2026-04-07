@@ -4,12 +4,16 @@
   "description": "Ticket API service with approval queue and Prometheus metrics",
   "main": "src/index.js",
   "scripts": {
-    "start": "node src/index.js"
+    "start": "node src/index.js",
+    "test": "jest --testPathPattern=tests/"
   },
   "dependencies": {
     "fastify": "^4.26.0",
-    "pino": "^8.19.0",
     "pg": "^8.11.3",
+    "pino": "^8.19.0",
     "prom-client": "^15.1.0"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
   }
 }
