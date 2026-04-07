@@ -423,7 +423,82 @@
       letter-spacing: 0.02em;
     }
 
+    /* ── OPEN NOW TOGGLE ─────────────────────── */
+    .filter-row {
+      display: flex;
+      gap: 8px;
+      flex-shrink: 0;
+      align-items: center;
+    }
+
+    .toggle-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 14px;
+      border-radius: 100px;
+      border: 1.5px solid var(--surface-2);
+      background: var(--surface);
+      color: var(--muted);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      cursor: pointer;
+      transition: all 0.18s ease;
+      user-select: none;
+    }
+    .toggle-pill:hover { border-color: var(--muted); color: var(--cream); }
+    .toggle-pill.active {
+      border-color: #4ADE80;
+      color: #4ADE80;
+      background: rgba(74,222,128,0.08);
+    }
+    .toggle-pill .pill-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+      flex-shrink: 0;
+    }
+
     .hidden { display: none !important; }
+
+    /* ── INCIDENT BANNER ────────────────────── */
+    .incident-banner {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 200;
+      background: var(--surface);
+      border-bottom: 2px solid #E8920A;
+      padding: 10px 16px;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      font-size: 13px;
+      color: var(--cream);
+      line-height: 1.55;
+    }
+
+    .incident-banner-text {
+      flex: 1;
+    }
+
+    .incident-banner-dismiss {
+      flex-shrink: 0;
+      background: transparent;
+      border: 1.5px solid var(--surface-2);
+      border-radius: 8px;
+      color: var(--muted);
+      font-size: 13px;
+      cursor: pointer;
+      padding: 2px 8px;
+      line-height: 1.5;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .incident-banner-dismiss:hover { border-color: var(--muted); color: var(--cream); }
 
     /* ── PROFILE BUTTON ──────────────────────── */
     .btn-profile {
@@ -732,6 +807,16 @@
   </style>
 </head>
 <body>
+
+<!-- Incident banner — shown until dismissed, controlled by JS below -->
+<div id="incident-banner" class="incident-banner" style="display:none;" role="alert" aria-live="polite">
+  <div class="incident-banner-text">
+    <strong>Service disruption resolved (Apr 4–6).</strong>
+    Approval requests were held for up to 36 hours due to a routing issue. Fixes including automatic retry queues and an emergency deployment bypass process are now live. If you have approvals still showing as Pending, open them and tap Re-submit — they will process immediately.
+  </div>
+  <button class="incident-banner-dismiss" id="incident-banner-dismiss" aria-label="Dismiss incident notice">Dismiss</button>
+</div>
+
 <div id="app">
 
   <!-- Header -->
@@ -762,6 +847,14 @@
     <button class="cat-btn" data-cat="see" onclick="toggleCategory('see')">
       <span class="icon">👁️</span>
       <span>See</span>
+    </button>
+  </div>
+
+  <!-- Filters -->
+  <div class="filter-row">
+    <button class="toggle-pill" id="openNowBtn" onclick="toggleOpenNow()">
+      <span class="pill-dot"></span>
+      Open now
     </button>
   </div>
 
@@ -995,12 +1088,28 @@
     lon: null,
     locationReady: false,
     activeCategory: null,   // null | 'do' | 'eat' | 'see'
+    openNow: false,         // filter to currently open places
     pool: [],               // normalized suggestion objects
     index: 0,
     browsing: false,        // true once first results are shown
     loading: false,
     seenIds: new Set()      // IDs of suggestions already shown
   };
+
+  // ─────────────────────────────────────────────────────────
+  // OPEN NOW TOGGLE
+  // ─────────────────────────────────────────────────────────
+  function toggleOpenNow() {
+    state.openNow = !state.openNow;
+    document.getElementById('openNowBtn').classList.toggle('active', state.openNow);
+    track('open_now_toggled', { enabled: state.openNow });
+
+    if (state.browsing) {
+      state.pool  = [];
+      state.index = 0;
+      fetchSuggestions();
+    }
+  }
 
   // ─────────────────────────────────────────────────────────
   // GEOLOCATION
@@ -1095,6 +1204,7 @@
       const url = new URL('/places/search', backendUrl);
       url.searchParams.set('ll', `${state.lat},${state.lon}`);
       url.searchParams.set('cat', cat);
+      if (state.openNow) url.searchParams.set('open_now', 'true');
       res = await fetch(url.toString(), { headers: { 'Accept': 'application/json' } });
       if (!res.ok) throw new Error(`Places API error: ${res.status}`);
     } else {
@@ -1107,7 +1217,8 @@
       url.searchParams.set('categories', FSQ_CATEGORIES[cat]);
       url.searchParams.set('radius', RADII[cat]);
       url.searchParams.set('limit', '50');
-      url.searchParams.set('fields', 'fsq_id,name,categories,geocodes,location');
+      url.searchParams.set('fields', 'fsq_id,name,categories,geocodes,location,hours');
+      if (state.openNow) url.searchParams.set('open_now', 'true');
       res = await fetch(url.toString(), {
         headers: { 'Authorization': `Bearer ${apiKey}`, 'Accept': 'application/json' }
       });
@@ -1162,12 +1273,23 @@
       }
 
       // Filter out already-seen suggestions
+      const unfilteredCount = pool.length;
       pool = pool.filter(el => !state.seenIds.has(el.id));
 
       if (pool.length === 0) {
+        if (unfilteredCount > 0) {
+          // All results have been seen — clear seenIds and cycle through again
+          state.seenIds.clear();
+          state.loading = false;
+          fetchSuggestions();
+          return;
+        }
         setButtons('error');
-        showZeroState('empty', "Try a different category, or check back when you're somewhere with more going on.");
-        track('search_empty', { category: state.activeCategory });
+        const emptyMsg = state.openNow
+          ? "Nothing open nearby right now. Try turning off the Open now filter, or check back later."
+          : "Try a different category, or check back when you're somewhere with more going on.";
+        showZeroState('empty', emptyMsg);
+        track('search_empty', { category: state.activeCategory, openNow: state.openNow });
         state.loading = false;
         return;
       }
@@ -1228,12 +1350,14 @@
   }
 
   function interleave(...arrays) {
-    const result = [];
-    const max = Math.max(...arrays.map(a => a.length));
-    for (let i = 0; i < max; i++) {
-      for (const arr of arrays) { if (arr[i]) result.push(arr[i]); }
-    }
-    return result;
+    // Weight proportionally by array length so larger categories appear more
+    // frequently throughout the pool, not just at the end after smaller ones
+    // are exhausted (fixes uneven early-pool representation).
+    const tagged = arrays.flatMap((arr, catIdx) =>
+      arr.map((item, i) => ({ item, sort: (i + 0.5) / arr.length, catIdx }))
+    );
+    tagged.sort((a, b) => a.sort - b.sort || a.catIdx - b.catIdx);
+    return tagged.map(t => t.item);
   }
 
   const catEmoji  = { do: '🎯', eat: '🍽️', see: '👁️' };
@@ -1259,8 +1383,11 @@
     error:    { icon: '⚡', title: 'Something went wrong',         rings: false },
   };
 
-  function showZeroState(variant, body) {
+  function showZeroState(variant, body, actionLabel, actionFn) {
     const meta = ZERO_STATE_META[variant] || ZERO_STATE_META.error;
+    const actionHtml = actionLabel
+      ? `<button id="errorActionBtn" class="btn-go" style="margin-top:4px;max-width:220px">${actionLabel}</button>`
+      : '';
     document.getElementById('cardArea').innerHTML = `
       <div class="zero-state" data-variant="${variant}">
         <div class="zero-icon-wrap">
@@ -1271,20 +1398,16 @@
         </div>
         <div class="zero-title">${meta.title}</div>
         <div class="zero-body">${body}</div>
+        ${actionHtml}
       </div>`;
     if (actionLabel && actionFn) {
       document.getElementById('errorActionBtn').addEventListener('click', actionFn);
     }
   }
 
-  function showError(msg) {
+  function showError(msg, actionLabel, actionFn) {
     setButtons('error');
-    showZeroState('error', msg);
-  }
-
-  function showError(msg) {
-    setButtons('error');
-    showZeroState('error', msg);
+    showZeroState('error', msg, actionLabel, actionFn);
   }
 
   function showSuggestion() {
@@ -1310,6 +1433,7 @@
       return;
     }
 
+    try {
     const dist    = haversineMeters(state.lat, state.lon, s.lat, s.lon);
     const detail  = s.detail ? ` · ${s.detail}` : '';
     const addrLine = s.address
@@ -1346,6 +1470,11 @@
     setButtons('browsing', remaining);
     updateSaveBtn(s.id);
     track('suggestion_viewed', { category: s.cat, position: state.index, remaining });
+    } catch (err) {
+        console.error('showSuggestion render error:', err);
+        state.index++;
+        showSuggestion();
+    }
   }
 
   function setButtons(mode, remaining = 0) {

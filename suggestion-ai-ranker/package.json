@@ -1,0 +1,14 @@
+{
+  "name": "suggestion-ai-ranker",
+  "version": "0.1.0",
+  "description": "Prototype: AI-powered place suggestion ranking using Claude",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "demo": "node src/demo.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.52.0",
+    "fastify": "^4.26.0"
+  }
+}

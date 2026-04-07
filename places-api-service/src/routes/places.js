@@ -23,8 +23,9 @@ async function placesPlugin(fastify) {
         type: 'object',
         required: ['ll', 'cat'],
         properties: {
-          ll:  { type: 'string', pattern: '^-?\\d+(\\.\\d+)?,-?\\d+(\\.\\d+)?$' },
-          cat: { type: 'string', enum: ['eat', 'see', 'do'] },
+          ll:       { type: 'string', pattern: '^-?\\d+(\\.\\d+)?,-?\\d+(\\.\\d+)?$' },
+          cat:      { type: 'string', enum: ['eat', 'see', 'do'] },
+          open_now: { type: 'string', enum: ['true', 'false'] },
         },
       },
     },
@@ -34,14 +35,15 @@ async function placesPlugin(fastify) {
       return reply.code(503).send({ error: 'FOURSQUARE_API_KEY is not configured on the server' });
     }
 
-    const { ll, cat } = request.query;
+    const { ll, cat, open_now } = request.query;
 
     const url = new URL(FSQ_ENDPOINT);
     url.searchParams.set('ll', ll);
     url.searchParams.set('categories', FSQ_CATEGORIES[cat]);
     url.searchParams.set('radius', String(RADII[cat]));
     url.searchParams.set('limit', '50');
-    url.searchParams.set('fields', 'fsq_id,name,categories,geocodes,location');
+    url.searchParams.set('fields', 'fsq_id,name,categories,geocodes,location,hours');
+    if (open_now === 'true') url.searchParams.set('open_now', 'true');
 
     const res = await fetch(url.toString(), {
       headers: { Authorization: `Bearer ${apiKey}`, Accept: 'application/json' },
