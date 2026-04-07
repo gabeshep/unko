@@ -418,6 +418,44 @@
       letter-spacing: 0.02em;
     }
 
+    /* ── OPEN NOW TOGGLE ─────────────────────── */
+    .filter-row {
+      display: flex;
+      gap: 8px;
+      flex-shrink: 0;
+      align-items: center;
+    }
+
+    .toggle-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 14px;
+      border-radius: 100px;
+      border: 1.5px solid var(--surface-2);
+      background: var(--surface);
+      color: var(--muted);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      cursor: pointer;
+      transition: all 0.18s ease;
+      user-select: none;
+    }
+    .toggle-pill:hover { border-color: var(--muted); color: var(--cream); }
+    .toggle-pill.active {
+      border-color: #4ADE80;
+      color: #4ADE80;
+      background: rgba(74,222,128,0.08);
+    }
+    .toggle-pill .pill-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+      flex-shrink: 0;
+    }
+
     .hidden { display: none !important; }
 
     /* ── PROFILE BUTTON ──────────────────────── */
@@ -760,6 +798,14 @@
     </button>
   </div>
 
+  <!-- Filters -->
+  <div class="filter-row">
+    <button class="toggle-pill" id="openNowBtn" onclick="toggleOpenNow()">
+      <span class="pill-dot"></span>
+      Open now
+    </button>
+  </div>
+
   <!-- Main card area -->
   <div class="card-area" id="cardArea">
     <div class="zero-state" data-variant="start">
@@ -990,12 +1036,28 @@
     lon: null,
     locationReady: false,
     activeCategory: null,   // null | 'do' | 'eat' | 'see'
+    openNow: false,         // filter to currently open places
     pool: [],               // normalized suggestion objects
     index: 0,
     browsing: false,        // true once first results are shown
     loading: false,
     seenIds: new Set()      // IDs of suggestions already shown
   };
+
+  // ─────────────────────────────────────────────────────────
+  // OPEN NOW TOGGLE
+  // ─────────────────────────────────────────────────────────
+  function toggleOpenNow() {
+    state.openNow = !state.openNow;
+    document.getElementById('openNowBtn').classList.toggle('active', state.openNow);
+    track('open_now_toggled', { enabled: state.openNow });
+
+    if (state.browsing) {
+      state.pool  = [];
+      state.index = 0;
+      fetchSuggestions();
+    }
+  }
 
   // ─────────────────────────────────────────────────────────
   // GEOLOCATION
@@ -1090,6 +1152,7 @@
       const url = new URL('/places/search', backendUrl);
       url.searchParams.set('ll', `${state.lat},${state.lon}`);
       url.searchParams.set('cat', cat);
+      if (state.openNow) url.searchParams.set('open_now', 'true');
       res = await fetch(url.toString(), { headers: { 'Accept': 'application/json' } });
       if (!res.ok) throw new Error(`Places API error: ${res.status}`);
     } else {
@@ -1102,7 +1165,8 @@
       url.searchParams.set('categories', FSQ_CATEGORIES[cat]);
       url.searchParams.set('radius', RADII[cat]);
       url.searchParams.set('limit', '50');
-      url.searchParams.set('fields', 'fsq_id,name,categories,geocodes,location');
+      url.searchParams.set('fields', 'fsq_id,name,categories,geocodes,location,hours');
+      if (state.openNow) url.searchParams.set('open_now', 'true');
       res = await fetch(url.toString(), {
         headers: { 'Authorization': `Bearer ${apiKey}`, 'Accept': 'application/json' }
       });
@@ -1161,8 +1225,11 @@
 
       if (pool.length === 0) {
         setButtons('error');
-        showZeroState('empty', "Try a different category, or check back when you're somewhere with more going on.");
-        track('search_empty', { category: state.activeCategory });
+        const emptyMsg = state.openNow
+          ? "Nothing open nearby right now. Try turning off the Open now filter, or check back later."
+          : "Try a different category, or check back when you're somewhere with more going on.";
+        showZeroState('empty', emptyMsg);
+        track('search_empty', { category: state.activeCategory, openNow: state.openNow });
         state.loading = false;
         return;
       }
