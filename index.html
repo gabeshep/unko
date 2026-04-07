@@ -1438,7 +1438,7 @@
 
     const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(s.name + ' ' + s.lat + ',' + s.lon)}`;
     const dist    = haversineMeters(state.lat, state.lon, s.lat, s.lon);
-    const text    = `${s.name} — ${s.type}, ${formatDist(dist)} away`;
+    const text    = `${s.name} — ${s.type}、${formatDist(dist)}先`;
 
     const shareMethod = navigator.share ? 'native' : 'clipboard';
     track('place_shared', { category: s.cat, method: shareMethod });
