@@ -16,6 +16,10 @@ async function main() {
     }
   });
 
+  if (!process.env.FOURSQUARE_API_KEY) {
+    app.log.warn('FOURSQUARE_API_KEY not set — /places/search will return 503 until configured');
+  }
+
   app.register(placesPlugin);
 
   const port = parseInt(process.env.PORT || '3003', 10);
