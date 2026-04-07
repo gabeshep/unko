@@ -139,6 +139,34 @@ describe('places-api-service unit tests', () => {
       expect(calledUrl).toContain('radius=3000');
     });
 
+    test('returns 503 when fetch rejects with AbortError (timeout)', async () => {
+      process.env.FOURSQUARE_API_KEY = 'test-key';
+      global.fetch = jest.fn().mockRejectedValue(
+        Object.assign(new Error('aborted'), { name: 'AbortError' })
+      );
+
+      const response = await app.inject({
+        method: 'GET',
+        url: '/places/search?ll=35.6762,139.6503&cat=eat',
+      });
+
+      expect(response.statusCode).toBe(503);
+      expect(JSON.parse(response.body)).toMatchObject({ error: expect.stringContaining('temporarily unavailable') });
+    });
+
+    test('returns 503 when fetch rejects with a network error', async () => {
+      process.env.FOURSQUARE_API_KEY = 'test-key';
+      global.fetch = jest.fn().mockRejectedValue(new TypeError('Failed to fetch'));
+
+      const response = await app.inject({
+        method: 'GET',
+        url: '/places/search?ll=35.6762,139.6503&cat=eat',
+      });
+
+      expect(response.statusCode).toBe(503);
+      expect(JSON.parse(response.body)).toMatchObject({ error: expect.stringContaining('temporarily unavailable') });
+    });
+
     test('returns 502 when Foursquare API returns an error status', async () => {
       process.env.FOURSQUARE_API_KEY = 'test-key';
       global.fetch = jest.fn().mockResolvedValue({

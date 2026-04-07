@@ -1306,7 +1306,7 @@
       state.loading = false;
       track('search_failed', { category: state.activeCategory, error: err.message });
       showError(
-        'Could not reach the places database. Check your connection and try again.',
+        'Could not load nearby places. Check your connection and try again.',
         'Try Again →',
         fetchSuggestions
       );

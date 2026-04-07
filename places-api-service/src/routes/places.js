@@ -45,9 +45,21 @@ async function placesPlugin(fastify) {
     url.searchParams.set('fields', 'fsq_id,name,categories,geocodes,location,hours');
     if (open_now === 'true') url.searchParams.set('open_now', 'true');
 
-    const res = await fetch(url.toString(), {
-      headers: { Authorization: `Bearer ${apiKey}`, Accept: 'application/json' },
-    });
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 8000);
+
+    let res;
+    try {
+      res = await fetch(url.toString(), {
+        headers: { Authorization: `Bearer ${apiKey}`, Accept: 'application/json' },
+        signal: controller.signal,
+      });
+    } catch (err) {
+      clearTimeout(timer);
+      fastify.log.warn({ event: 'foursquare_timeout', cat }, 'Foursquare request failed');
+      return reply.code(503).send({ error: 'Places service temporarily unavailable' });
+    }
+    clearTimeout(timer);
 
     if (!res.ok) {
       fastify.log.error({ status: res.status }, 'Foursquare API error');
