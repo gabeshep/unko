@@ -1305,6 +1305,7 @@
       return;
     }
 
+    try {
     const dist    = haversineMeters(state.lat, state.lon, s.lat, s.lon);
     const detail  = s.detail ? ` · ${s.detail}` : '';
     const addrLine = s.address
@@ -1341,6 +1342,11 @@
     setButtons('browsing', remaining);
     updateSaveBtn(s.id);
     track('suggestion_viewed', { category: s.cat, position: state.index, remaining });
+    } catch (err) {
+        console.error('showSuggestion render error:', err);
+        state.index++;
+        showSuggestion();
+    }
   }
 
   function setButtons(mode, remaining = 0) {
