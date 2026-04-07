@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ja">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>Unko — Find your next adventure</title>
+  <title>Unko — 次の冒険を探そう</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&family=Noto+Sans+JP:wght@300;400;500&display=swap" rel="stylesheet">
   <style>
     :root {
       --bg:        #3C3C3C;
@@ -25,7 +25,7 @@
 
     html, body {
       height: 100%;
-      font-family: 'DM Sans', sans-serif;
+      font-family: 'DM Sans', 'Noto Sans JP', sans-serif;
       background: var(--bg);
       color: var(--cream);
       overflow: hidden;
@@ -735,9 +735,9 @@
     <div style="display:flex;align-items:center;gap:10px;">
       <div class="location-badge">
         <div class="location-dot" id="locationDot"></div>
-        <span id="locationText">Locating you…</span>
+        <span id="locationText">位置を確認中…</span>
       </div>
-      <button class="btn-profile" id="profileBtn" onclick="openPlacesPanel()" title="My places &amp; profile">
+      <button class="btn-profile" id="profileBtn" onclick="openPlacesPanel()" title="保存済みと設定">
         👤
         <span class="saved-dot"></span>
       </button>
@@ -748,15 +748,15 @@
   <div class="categories">
     <button class="cat-btn" data-cat="do" onclick="toggleCategory('do')">
       <span class="icon">🎯</span>
-      <span>Do</span>
+      <span>やる</span>
     </button>
     <button class="cat-btn" data-cat="eat" onclick="toggleCategory('eat')">
       <span class="icon">🍽️</span>
-      <span>Eat</span>
+      <span>食べる</span>
     </button>
     <button class="cat-btn" data-cat="see" onclick="toggleCategory('see')">
       <span class="icon">👁️</span>
-      <span>See</span>
+      <span>見る</span>
     </button>
   </div>
 
@@ -769,8 +769,8 @@
         <div class="zero-ring"></div>
         <span class="zero-icon">🧭</span>
       </div>
-      <div class="zero-title">What's your next adventure?</div>
-      <div class="zero-body">Pick a category above, or leave it open to be surprised.</div>
+      <div class="zero-title">次の冒険は？</div>
+      <div class="zero-body">カテゴリを選ぶか、すべてにして驚きの発見を。</div>
     </div>
   </div>
 
@@ -778,17 +778,17 @@
   <div class="actions">
     <div class="btn-row">
       <button class="btn-go" id="findBtn" onclick="handleFindBtn()">
-        Find Something →
+        探す →
       </button>
-      <button class="btn-save hidden" id="saveBtn" onclick="toggleSavePlace()" title="Save this place">
+      <button class="btn-save hidden" id="saveBtn" onclick="toggleSavePlace()" title="このスポットを保存">
         ♡
       </button>
-      <button class="btn-share hidden" id="shareBtn" onclick="sharePlace()" title="Send this place to a friend">
+      <button class="btn-share hidden" id="shareBtn" onclick="sharePlace()" title="このスポットをシェア">
         ↗
       </button>
     </div>
     <button class="btn-nah hidden" id="nahBtn" onclick="nextSuggestion()">
-      Nah, what else →
+      いや、ほかには →
     </button>
     <div class="nearby-count hidden" id="nearbyCount"></div>
   </div>
@@ -800,7 +800,7 @@
 <div class="drawer" id="placesDrawer">
   <div class="drawer-handle"></div>
   <div class="drawer-header">
-    <div class="drawer-title">My Places</div>
+    <div class="drawer-title">マイスポット</div>
     <button class="btn-drawer-close" onclick="closePlacesPanel()">✕</button>
   </div>
   <div class="drawer-body" id="drawerBody">
@@ -874,7 +874,7 @@
     const saved = isSaved(id);
     btn.innerHTML = saved ? '♥' : '♡';
     btn.classList.toggle('saved', saved);
-    btn.title = saved ? 'Remove from saved places' : 'Save this place';
+    btn.title = saved ? '保存から削除' : 'このスポットを保存';
   }
 
   function updateProfileBtnBadge() {
@@ -900,7 +900,7 @@
     const body = document.getElementById('drawerBody');
 
     const savedHtml = savedPlaces.length === 0
-      ? `<div class="saved-empty">No saved places yet.<br>Tap ♡ on a suggestion to save it here.</div>`
+      ? `<div class="saved-empty">まだ保存済みのスポットはありません。<br>♡ をタップして保存しましょう。</div>`
       : savedPlaces.map(p => {
           const emoji = catEmoji[p.cat] || '📍';
           const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.name)}+${p.lat},${p.lon}`;
@@ -913,8 +913,8 @@
                 <div class="saved-place-meta">${p.type}${p.address ? ' · ' + p.address : ''}</div>
               </div>
               <div class="saved-place-actions">
-                <button class="btn-saved-map" onclick="window.open('${mapsUrl}','_blank')" title="Open in Maps">🗺️</button>
-                <button class="btn-saved-remove" onclick="removeSavedPlace('${p.id}')" title="Remove">✕</button>
+                <button class="btn-saved-map" onclick="window.open('${mapsUrl}','_blank')" title="マップで開く">🗺️</button>
+                <button class="btn-saved-remove" onclick="removeSavedPlace('${p.id}')" title="削除">✕</button>
               </div>
             </div>`;
         }).join('');
@@ -923,27 +923,27 @@
     const profileEmail = profile.email || '';
     body.innerHTML = `
       <div class="profile-section">
-        <div class="section-label">Profile</div>
+        <div class="section-label">プロフィール</div>
         <div class="profile-row" id="profileDisplay">
           <div class="profile-avatar">🧭</div>
           <div class="profile-name-wrap">
-            <div class="profile-name-display">${profileName || 'Anonymous explorer'}</div>
-            <div class="profile-name-hint">${profileEmail || (profileName ? 'Your display name' : 'Add your name &amp; email')}</div>
+            <div class="profile-name-display">${profileName || '匿名の探検家'}</div>
+            <div class="profile-name-hint">${profileEmail || (profileName ? '表示名' : '名前とメールを追加')}</div>
           </div>
-          <button class="btn-edit-profile" onclick="showProfileEditForm()">Edit</button>
+          <button class="btn-edit-profile" onclick="showProfileEditForm()">編集</button>
         </div>
         <div class="profile-edit-form hidden" id="profileEditForm">
           <input class="profile-name-input" id="profileNameInput" type="text"
-            placeholder="Your name" maxlength="32" value="${profileName}"
+            placeholder="お名前" maxlength="32" value="${profileName}"
             onkeydown="if(event.key==='Enter') saveProfileName()">
           <input class="profile-name-input" id="profileEmailInput" type="email"
-            placeholder="Your email (optional)" maxlength="128" value="${profileEmail}"
+            placeholder="メールアドレス（任意）" maxlength="128" value="${profileEmail}"
             onkeydown="if(event.key==='Enter') saveProfileName()">
-          <button class="btn-save-name" onclick="saveProfileName()">Save →</button>
+          <button class="btn-save-name" onclick="saveProfileName()">保存 →</button>
         </div>
       </div>
       <div class="saved-section">
-        <div class="section-label">Saved places (${savedPlaces.length})</div>
+        <div class="section-label">保存済みスポット（${savedPlaces.length}件）</div>
         ${savedHtml}
       </div>
     `;
@@ -1002,7 +1002,7 @@
   // ─────────────────────────────────────────────────────────
   function initLocation() {
     if (!navigator.geolocation) {
-      setLocationLabel('Location unavailable', false);
+      setLocationLabel('位置情報が使えません', false);
       return;
     }
 
@@ -1012,7 +1012,7 @@
         state.lon = pos.coords.longitude;
         state.locationReady = true;
         document.getElementById('locationDot').classList.add('active');
-        setLocationLabel('Location found', true);
+        setLocationLabel('位置情報取得済み', true);
         track('location_granted');
 
         // Try to get a human-readable city name
@@ -1029,9 +1029,9 @@
         } catch { /* non-critical, silently ignore */ }
       },
       () => {
-        setLocationLabel('Enable location', false);
+        setLocationLabel('位置情報を許可してください', false);
         setButtons('error');
-        showZeroState('location', 'Allow location access in your browser settings, then refresh the page to find places near you.');
+        showZeroState('location', 'ブラウザの設定で位置情報へのアクセスを許可して、ページを再読み込みしてください。');
         track('location_denied');
       },
       { enableHighAccuracy: false, timeout: 12000 }
@@ -1128,7 +1128,7 @@
   async function fetchSuggestions() {
     if (!state.locationReady) {
       setButtons('error');
-      showZeroState('location', 'Still waiting for your location. Please allow location access and try again.');
+      showZeroState('location', '位置情報を待っています。許可してからもう一度お試しください。');
       return;
     }
     if (state.loading) return;
@@ -1161,7 +1161,7 @@
 
       if (pool.length === 0) {
         setButtons('error');
-        showZeroState('empty', "Try a different category, or check back when you're somewhere with more going on.");
+        showZeroState('empty', 'カテゴリを変えるか、別の場所でお試しください。');
         track('search_empty', { category: state.activeCategory });
         state.loading = false;
         return;
@@ -1180,8 +1180,8 @@
       state.loading = false;
       track('search_failed', { category: state.activeCategory, error: err.message });
       showError(
-        'Could not reach the places database. Check your connection and try again.',
-        'Try Again →',
+        'スポット情報に接続できませんでした。接続を確認してもう一度お試しください。',
+        '再試行 →',
         fetchSuggestions
       );
     }
@@ -1192,7 +1192,7 @@
   // ─────────────────────────────────────────────────────────
   function getTypeLabel(cat, categories) {
     if (categories && categories.length > 0) return categories[0].short_name || categories[0].name;
-    return cat === 'eat' ? 'Restaurant' : cat === 'see' ? 'Landmark' : 'Activity';
+    return cat === 'eat' ? 'レストラン' : cat === 'see' ? '名所' : 'アクティビティ';
   }
 
   function buildAddress(location) {
@@ -1242,20 +1242,23 @@
     document.getElementById('cardArea').innerHTML = `
       <div class="loading-card">
         <div class="spinner"></div>
-        <div class="loading-msg">Finding what's nearby…</div>
+        <div class="loading-msg">近くのスポットを探しています…</div>
       </div>`;
   }
 
   // variant: 'start' | 'location' | 'empty' | 'error'
   const ZERO_STATE_META = {
-    start:    { icon: '🧭', title: 'What\'s your next adventure?', rings: true  },
-    location: { icon: '📍', title: 'Location needed',              rings: false },
-    empty:    { icon: '🔍', title: 'Nothing found nearby',         rings: false },
-    error:    { icon: '⚡', title: 'Something went wrong',         rings: false },
+    start:    { icon: '🧭', title: '次の冒険は？',             rings: true  },
+    location: { icon: '📍', title: '位置情報が必要です',       rings: false },
+    empty:    { icon: '🔍', title: '近くに見つかりません',     rings: false },
+    error:    { icon: '⚡', title: 'エラーが発生しました',     rings: false },
   };
 
-  function showZeroState(variant, body) {
+  function showZeroState(variant, body, actionLabel, actionFn) {
     const meta = ZERO_STATE_META[variant] || ZERO_STATE_META.error;
+    const actionHtml = actionLabel
+      ? `<button id="errorActionBtn" class="btn-go" style="margin-top:16px">${actionLabel}</button>`
+      : '';
     document.getElementById('cardArea').innerHTML = `
       <div class="zero-state" data-variant="${variant}">
         <div class="zero-icon-wrap">
@@ -1266,20 +1269,16 @@
         </div>
         <div class="zero-title">${meta.title}</div>
         <div class="zero-body">${body}</div>
+        ${actionHtml}
       </div>`;
     if (actionLabel && actionFn) {
       document.getElementById('errorActionBtn').addEventListener('click', actionFn);
     }
   }
 
-  function showError(msg) {
+  function showError(msg, actionLabel, actionFn) {
     setButtons('error');
-    showZeroState('error', msg);
-  }
-
-  function showError(msg) {
-    setButtons('error');
-    showZeroState('error', msg);
+    showZeroState('error', msg, actionLabel, actionFn);
   }
 
   function showSuggestion() {
@@ -1318,7 +1317,7 @@
       <span class="card-badge badge-${s.cat}">${catEmoji[s.cat]} ${s.type}${detail}</span>
       <div class="card-name">${s.name}</div>
       <div class="card-meta">
-        <span>📏 ${formatDist(dist)} away</span>
+        <span>📏 ${formatDist(dist)} 先</span>
       </div>
       ${addrLine}
     `;
@@ -1360,7 +1359,7 @@
       counter.classList.add('hidden');
 
     } else if (mode === 'error') {
-      findBtn.textContent = 'Try Again ↻';
+      findBtn.textContent = '再試行 ↻';
       findBtn.onclick = handleFindBtn;
       findBtn.classList.remove('hidden');
       saveBtn.classList.add('hidden');
@@ -1369,24 +1368,24 @@
       counter.classList.add('hidden');
 
     } else if (mode === 'browsing') {
-      findBtn.textContent = "Let's go →";
+      findBtn.textContent = '行く →';
       findBtn.onclick = letsGo;
       findBtn.classList.remove('hidden');
       saveBtn.classList.remove('hidden');
       if (navigator.share || navigator.clipboard) shareBtn.classList.remove('hidden');
-      nahBtn.textContent = 'Nah, what else →';
+      nahBtn.textContent = 'いや、ほかには →';
       nahBtn.onclick = nextSuggestion;
       nahBtn.classList.remove('hidden');
       counter.classList.remove('hidden');
-      counter.textContent = remaining > 0 ? `${remaining} more nearby` : 'Last one nearby — will refresh';
+      counter.textContent = remaining > 0 ? `近くにあと${remaining}件` : '近くのスポットは最後の1件 — 更新します';
 
     } else if (mode === 'confirming') {
-      findBtn.textContent = 'Yes, take me there →';
+      findBtn.textContent = 'はい、案内して →';
       findBtn.onclick = confirmGo;
       findBtn.classList.remove('hidden');
       saveBtn.classList.add('hidden');
       shareBtn.classList.add('hidden');
-      nahBtn.textContent = 'Nah, go back';
+      nahBtn.textContent = 'いや、もどる';
       nahBtn.onclick = cancelGo;
       nahBtn.classList.remove('hidden');
       counter.classList.add('hidden');
