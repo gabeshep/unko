@@ -20,3 +20,13 @@ groups:
         annotations:
           summary: "Synthetic canary has not written a record in over 10 minutes"
           description: "The approvals canary last wrote a synthetic record {{ $value | humanizeDuration }} ago (threshold: 10 minutes / 2 missed cycles). Check discord-sync-worker canary cron and database connectivity."
+
+      - alert: PlacesAPICanaryStale
+        expr: time() - places_api_canary_last_success_seconds > 180
+        for: 1m
+        labels:
+          severity: page
+          team: sre-release-engineering
+        annotations:
+          summary: 'Places API synthetic canary has not reported success in over 3 minutes'
+          description: 'The places-api-service canary last succeeded {{ $value | humanizeDuration }} ago (threshold: 3 minutes / 3 missed 1-minute checks). Check GET /health/deep on the places-api-service and verify Foursquare API connectivity. Runbook: docs/runbooks/places-api-unreachability.md'

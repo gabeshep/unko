@@ -44,7 +44,7 @@ resource "aws_cloudwatch_event_rule" "places_api_canary" {
   count               = var.places_api_canary_enabled ? 1 : 0
   name                = "places-api-service-canary"
   description         = "Triggers the places-api-service synthetic canary every 5 minutes to validate the places search endpoint."
-  schedule_expression = "rate(5 minutes)"
+  schedule_expression = "rate(1 minute)"
   state               = "ENABLED"
 
   tags = {
