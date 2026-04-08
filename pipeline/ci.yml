@@ -78,6 +78,64 @@ jobs:
         working-directory: e2e
         run: npm test
 
+  contract-provider-tests:
+    name: Contract Provider Verification Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install ticket-api-service dependencies
+        working-directory: ticket-api-service
+        run: npm install
+
+      - name: Verify ticket-api-service satisfies governance-consumer contract
+        working-directory: ticket-api-service
+        run: npm test -- --testPathPattern=contract.provider
+
+      - name: Install places-api-service dependencies
+        working-directory: places-api-service
+        run: npm install
+
+      - name: Verify places-api-service satisfies ranker-consumer contract
+        working-directory: places-api-service
+        run: npm test -- --testPathPattern=contract.provider
+
+  contract-consumer-tests:
+    name: Contract Consumer Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install suggestion-ai-ranker dependencies
+        working-directory: suggestion-ai-ranker
+        run: npm install
+
+      - name: Run ranker consumer contract tests
+        working-directory: suggestion-ai-ranker
+        run: npm test
+
+      - name: Install ticket-api-service dependencies
+        working-directory: ticket-api-service
+        run: npm install
+
+      - name: Install e2e dependencies
+        working-directory: e2e
+        run: npm install
+
+      - name: Run governance consumer contract tests
+        working-directory: e2e
+        run: npx jest --testPathPattern=governance.consumer
+
   # Phase 1 (shadow mode): continue-on-error: true — monitoring for flakiness and duration.
   # Phase 2: Remove continue-on-error to make this a hard-blocking gate.
   webhook-integration-tests:

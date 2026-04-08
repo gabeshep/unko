@@ -1,0 +1,83 @@
+{
+  "consumer": "governance-consumer",
+  "provider": "ticket-api-service",
+  "interactions": [
+    {
+      "description": "fetches pending approvals queue",
+      "request": {
+        "method": "GET",
+        "path": "/approvals/queue"
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "count": { "type": "integer", "minimum": 0 },
+          "items": { "type": "array" }
+        }
+      }
+    },
+    {
+      "description": "fetches approval audit log",
+      "request": {
+        "method": "GET",
+        "path": "/approvals/audit-log"
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "items": { "type": "array" }
+        }
+      }
+    },
+    {
+      "description": "fetches sync status",
+      "request": {
+        "method": "GET",
+        "path": "/sync-status"
+      },
+      "response": {
+        "status_one_of": [200, 503],
+        "body": {
+          "sync": { "type": "string", "enum": ["ok", "drift", "error"] },
+          "db_count": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    {
+      "description": "submits a break-glass audit entry",
+      "request": {
+        "method": "POST",
+        "path": "/break-glass/audit",
+        "body": {
+          "payload_hash": "sha256-abc",
+          "sre_key_id": "sre-key-1",
+          "sre_identity": "sre@example.com",
+          "release_eng_key_id": "re-key-2",
+          "release_eng_identity": "re@example.com",
+          "shadow_mode": false
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "ok": { "type": "boolean", "value": true },
+          "id": { "type": "integer", "minimum": 1 }
+        }
+      }
+    },
+    {
+      "description": "rejects break-glass entry with missing fields",
+      "request": {
+        "method": "POST",
+        "path": "/break-glass/audit",
+        "body": {}
+      },
+      "response": {
+        "status": 400,
+        "body": {
+          "error": { "type": "string" }
+        }
+      }
+    }
+  ]
+}
