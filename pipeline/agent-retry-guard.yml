@@ -1,0 +1,140 @@
+name: AI Agent CI Retry Guard
+
+# Enforces the runaway retry token contract for AI pipeline agents.
+# Before each retry the agent MUST call this workflow.  If the retry budget
+# is exhausted the workflow fails and fires a Discord escalation so a human
+# can take over.
+#
+# Max retries: 3 (AI Pipeline & Agent Patterns — Phase 1 Pilot)
+# Rollback SLA: 15 minutes
+
+on:
+  workflow_dispatch:
+    inputs:
+      job_key:
+        description: 'Identifier for the CI job being retried (e.g. "ci/validate")'
+        required: true
+        type: string
+      retry_count:
+        description: 'Number of retries already attempted (0 = first retry)'
+        required: true
+        type: string
+      max_retries:
+        description: 'Override the default max retries (default: 3)'
+        required: false
+        default: '3'
+        type: string
+
+jobs:
+  check-retry-token:
+    name: Check Runaway Retry Token
+    runs-on: ubuntu-latest
+    outputs:
+      allowed: ${{ steps.token-check.outputs.allowed }}
+      next_retry_count: ${{ steps.token-check.outputs.next_retry_count }}
+      retries_remaining: ${{ steps.token-check.outputs.retries_remaining }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Validate retry token
+        id: token-check
+        env:
+          RETRY_JOB_KEY: ${{ inputs.job_key }}
+          RETRY_COUNT: ${{ inputs.retry_count }}
+          RETRY_MAX: ${{ inputs.max_retries }}
+        run: |
+          set +e
+          OUTPUT=$(node pipeline/retry-token.js)
+          EXIT_CODE=$?
+          set -e
+
+          echo "$OUTPUT"
+
+          ALLOWED=$(echo "$OUTPUT" | jq -r '.allowed')
+          NEXT_COUNT=$(echo "$OUTPUT" | jq -r '.next_retry_count // empty')
+          REMAINING=$(echo "$OUTPUT" | jq -r '.retries_remaining')
+
+          echo "allowed=$ALLOWED"             >> "$GITHUB_OUTPUT"
+          echo "next_retry_count=$NEXT_COUNT" >> "$GITHUB_OUTPUT"
+          echo "retries_remaining=$REMAINING" >> "$GITHUB_OUTPUT"
+
+          if [ "$ALLOWED" != "true" ]; then
+            echo "::error::Retry token exhausted for job '${{ inputs.job_key }}' after ${{ inputs.retry_count }} attempt(s). Human review required."
+            exit 1
+          fi
+
+          echo "Retry permitted. Retries remaining after this attempt: $((REMAINING - 1))"
+
+  escalate-on-max-retries:
+    name: Escalate to Human Review
+    runs-on: ubuntu-latest
+    needs: check-retry-token
+    if: failure() && needs.check-retry-token.result == 'failure'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Build escalation payload
+        id: escalation
+        env:
+          RETRY_JOB_KEY: ${{ inputs.job_key }}
+          RETRY_COUNT: ${{ inputs.retry_count }}
+          RETRY_MAX: ${{ inputs.max_retries }}
+        run: |
+          # Capture the max-retries-reached UX copy from the token script
+          set +e
+          OUTPUT=$(node pipeline/retry-token.js)
+          set -e
+
+          TITLE=$(echo "$OUTPUT" | jq -r '.ux.title')
+          ATTEMPTED=$(echo "$OUTPUT" | jq -r '.ux.attempted')
+          SUMMARY=$(echo "$OUTPUT" | jq -r '.ux.summary')
+          NEXT_STEPS=$(echo "$OUTPUT" | jq -r '.ux.next_steps | join("\n")')
+
+          # Compose Discord message
+          MESSAGE=$(jq -cn \
+            --arg title "$TITLE" \
+            --arg attempted "$ATTEMPTED" \
+            --arg summary "$SUMMARY" \
+            --arg steps "$NEXT_STEPS" \
+            --arg run_url "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            '{
+              embeds: [{
+                title: $title,
+                color: 15158332,
+                fields: [
+                  {name: "What was attempted", value: $attempted, inline: false},
+                  {name: "Summary", value: $summary, inline: false},
+                  {name: "Next steps", value: $steps, inline: false},
+                  {name: "CI Run", value: $run_url, inline: false}
+                ]
+              }]
+            }')
+
+          echo "discord_payload<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$MESSAGE"            >> "$GITHUB_OUTPUT"
+          echo "EOF"                 >> "$GITHUB_OUTPUT"
+
+      - name: Notify Discord — escalation required
+        if: ${{ env.DISCORD_SYNC_WORKER_URL != '' }}
+        env:
+          DISCORD_SYNC_WORKER_URL: ${{ secrets.DISCORD_SYNC_WORKER_URL }}
+          DEPLOY_NOTIFY_SECRET: ${{ secrets.DEPLOY_NOTIFY_SECRET }}
+        run: |
+          PAYLOAD='${{ steps.escalation.outputs.discord_payload }}'
+          SIGNATURE=$(echo -n "$PAYLOAD" | openssl dgst -sha256 -hmac "$DEPLOY_NOTIFY_SECRET" | awk '{print $2}')
+
+          curl -sf -X POST \
+            -H "Content-Type: application/json" \
+            -H "X-Deploy-Signature: $SIGNATURE" \
+            -d "$PAYLOAD" \
+            "${DISCORD_SYNC_WORKER_URL}/webhook/agent/escalate" || true
