@@ -6,6 +6,12 @@ on:
   pull_request:
     branches: [main]
 
+# Unit-economics instrumentation:
+# Each job records its start time and, in a post-step, emits compute_minutes
+# and runner_size to the cost-tracking-worker if COST_TRACKING_URL is set.
+# The ticket_id is derived from the branch name (expected format: ticket/<id>)
+# or falls back to the run ID so every run produces a row.
+
 jobs:
   validate:
     name: Validate HTML
@@ -13,11 +19,30 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Record job start time
+        run: echo "JOB_START_EPOCH=$(date +%s)" >> "$GITHUB_ENV"
+
       - name: Install htmlhint
         run: npm install -g htmlhint
 
       - name: Lint index.html
         run: htmlhint index.html
+
+      - name: Emit CI compute telemetry
+        if: always()
+        env:
+          COST_TRACKING_URL: ${{ secrets.COST_TRACKING_URL }}
+          JOB_OUTCOME: ${{ job.status }}
+        run: |
+          if [ -z "$COST_TRACKING_URL" ]; then exit 0; fi
+          END_EPOCH=$(date +%s)
+          COMPUTE_MINUTES=$(echo "scale=2; ($END_EPOCH - $JOB_START_EPOCH) / 60" | bc)
+          TICKET_ID=$(echo "${{ github.head_ref || github.ref_name }}" | sed 's|.*/||')
+          [ -z "$TICKET_ID" ] && TICKET_ID="run-${{ github.run_id }}"
+          curl -sf -X POST "$COST_TRACKING_URL/telemetry/ci-job" \
+            -H "Content-Type: application/json" \
+            -d "{\"ticketId\":\"$TICKET_ID\",\"workflowRunId\":\"${{ github.run_id }}\",\"jobName\":\"validate\",\"runnerSize\":\"ubuntu-latest\",\"computeMinutes\":$COMPUTE_MINUTES,\"outcome\":\"$JOB_OUTCOME\"}" \
+            || true
 
   secret-scan:
     name: Secret Scanning
@@ -27,16 +52,38 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Record job start time
+        run: echo "JOB_START_EPOCH=$(date +%s)" >> "$GITHUB_ENV"
+
       - name: Run Gitleaks
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Emit CI compute telemetry
+        if: always()
+        env:
+          COST_TRACKING_URL: ${{ secrets.COST_TRACKING_URL }}
+          JOB_OUTCOME: ${{ job.status }}
+        run: |
+          if [ -z "$COST_TRACKING_URL" ]; then exit 0; fi
+          END_EPOCH=$(date +%s)
+          COMPUTE_MINUTES=$(echo "scale=2; ($END_EPOCH - $JOB_START_EPOCH) / 60" | bc)
+          TICKET_ID=$(echo "${{ github.head_ref || github.ref_name }}" | sed 's|.*/||')
+          [ -z "$TICKET_ID" ] && TICKET_ID="run-${{ github.run_id }}"
+          curl -sf -X POST "$COST_TRACKING_URL/telemetry/ci-job" \
+            -H "Content-Type: application/json" \
+            -d "{\"ticketId\":\"$TICKET_ID\",\"workflowRunId\":\"${{ github.run_id }}\",\"jobName\":\"secret-scan\",\"runnerSize\":\"ubuntu-latest\",\"computeMinutes\":$COMPUTE_MINUTES,\"outcome\":\"$JOB_OUTCOME\"}" \
+            || true
 
   dependency-audit:
     name: Dependency Vulnerability Audit
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Record job start time
+        run: echo "JOB_START_EPOCH=$(date +%s)" >> "$GITHUB_ENV"
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -51,11 +98,30 @@ jobs:
         working-directory: ticket-api-service
         run: npm audit --audit-level=high
 
+      - name: Emit CI compute telemetry
+        if: always()
+        env:
+          COST_TRACKING_URL: ${{ secrets.COST_TRACKING_URL }}
+          JOB_OUTCOME: ${{ job.status }}
+        run: |
+          if [ -z "$COST_TRACKING_URL" ]; then exit 0; fi
+          END_EPOCH=$(date +%s)
+          COMPUTE_MINUTES=$(echo "scale=2; ($END_EPOCH - $JOB_START_EPOCH) / 60" | bc)
+          TICKET_ID=$(echo "${{ github.head_ref || github.ref_name }}" | sed 's|.*/||')
+          [ -z "$TICKET_ID" ] && TICKET_ID="run-${{ github.run_id }}"
+          curl -sf -X POST "$COST_TRACKING_URL/telemetry/ci-job" \
+            -H "Content-Type: application/json" \
+            -d "{\"ticketId\":\"$TICKET_ID\",\"workflowRunId\":\"${{ github.run_id }}\",\"jobName\":\"dependency-audit\",\"runnerSize\":\"ubuntu-latest\",\"computeMinutes\":$COMPUTE_MINUTES,\"outcome\":\"$JOB_OUTCOME\"}" \
+            || true
+
   e2e-smoke-tests:
     name: E2E Smoke Tests (Governance Flow)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Record job start time
+        run: echo "JOB_START_EPOCH=$(date +%s)" >> "$GITHUB_ENV"
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -78,6 +144,22 @@ jobs:
         working-directory: e2e
         run: npm test
 
+      - name: Emit CI compute telemetry
+        if: always()
+        env:
+          COST_TRACKING_URL: ${{ secrets.COST_TRACKING_URL }}
+          JOB_OUTCOME: ${{ job.status }}
+        run: |
+          if [ -z "$COST_TRACKING_URL" ]; then exit 0; fi
+          END_EPOCH=$(date +%s)
+          COMPUTE_MINUTES=$(echo "scale=2; ($END_EPOCH - $JOB_START_EPOCH) / 60" | bc)
+          TICKET_ID=$(echo "${{ github.head_ref || github.ref_name }}" | sed 's|.*/||')
+          [ -z "$TICKET_ID" ] && TICKET_ID="run-${{ github.run_id }}"
+          curl -sf -X POST "$COST_TRACKING_URL/telemetry/ci-job" \
+            -H "Content-Type: application/json" \
+            -d "{\"ticketId\":\"$TICKET_ID\",\"workflowRunId\":\"${{ github.run_id }}\",\"jobName\":\"e2e-smoke-tests\",\"runnerSize\":\"ubuntu-latest\",\"computeMinutes\":$COMPUTE_MINUTES,\"outcome\":\"$JOB_OUTCOME\"}" \
+            || true
+
   # Phase 1 (shadow mode): continue-on-error: true — monitoring for flakiness and duration.
   # Phase 2: Remove continue-on-error to make this a hard-blocking gate.
   webhook-integration-tests:
@@ -86,6 +168,9 @@ jobs:
     continue-on-error: true  # Phase 1: shadow mode — runs but does not block merges
     steps:
       - uses: actions/checkout@v4
+
+      - name: Record job start time
+        run: echo "JOB_START_EPOCH=$(date +%s)" >> "$GITHUB_ENV"
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -101,3 +186,19 @@ jobs:
         env:
           DISCORD_WEBHOOK_SECRET: test-secret-ci-placeholder
         run: npm test
+
+      - name: Emit CI compute telemetry
+        if: always()
+        env:
+          COST_TRACKING_URL: ${{ secrets.COST_TRACKING_URL }}
+          JOB_OUTCOME: ${{ job.status }}
+        run: |
+          if [ -z "$COST_TRACKING_URL" ]; then exit 0; fi
+          END_EPOCH=$(date +%s)
+          COMPUTE_MINUTES=$(echo "scale=2; ($END_EPOCH - $JOB_START_EPOCH) / 60" | bc)
+          TICKET_ID=$(echo "${{ github.head_ref || github.ref_name }}" | sed 's|.*/||')
+          [ -z "$TICKET_ID" ] && TICKET_ID="run-${{ github.run_id }}"
+          curl -sf -X POST "$COST_TRACKING_URL/telemetry/ci-job" \
+            -H "Content-Type: application/json" \
+            -d "{\"ticketId\":\"$TICKET_ID\",\"workflowRunId\":\"${{ github.run_id }}\",\"jobName\":\"webhook-integration-tests\",\"runnerSize\":\"ubuntu-latest\",\"computeMinutes\":$COMPUTE_MINUTES,\"outcome\":\"$JOB_OUTCOME\"}" \
+            || true
