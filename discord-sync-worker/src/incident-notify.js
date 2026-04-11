@@ -3,7 +3,6 @@
 const crypto = require('crypto');
 const https = require('https');
 const pino = require('pino');
-const config = require('./config');
 
 const logger = pino();
 
@@ -13,7 +12,7 @@ let incident_notify_discord_failures_total = 0;
 async function incidentNotifyHandler(request, reply) {
   const rawBody = request.body; // Buffer, thanks to addContentTypeParser
   const signature = request.headers['x-incident-signature'] || '';
-  const secret = config.incidentNotifySecret;
+  const secret = process.env.INCIDENT_NOTIFY_SECRET;
 
   // Compute HMAC-SHA256
   const hmac = crypto.createHmac('sha256', secret);
@@ -55,7 +54,7 @@ async function incidentNotifyHandler(request, reply) {
     return reply.code(400).send({ error: 'Missing required fields' });
   }
 
-  const enabled = config.incidentNotifyEnabled;
+  const enabled = process.env.INCIDENT_NOTIFY_ENABLED === 'true';
 
   if (!enabled) {
     logger.info({ msg: 'incident_notify', incident_id, severity, discord_ok: false });
@@ -67,7 +66,7 @@ async function incidentNotifyHandler(request, reply) {
 
   // POST to Discord webhook
   const discordPayload = JSON.stringify({ content });
-  const webhookUrl = config.discordIncidentWebhookUrl;
+  const webhookUrl = process.env.DISCORD_INCIDENT_WEBHOOK_URL || '';
 
   let discord_ok = false;
   try {

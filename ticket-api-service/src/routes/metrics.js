@@ -1,7 +1,6 @@
 'use strict';
 
 const promClient = require('prom-client');
-const config = require('../config');
 const db = require('../db');
 
 async function metricsPlugin(fastify, _opts) {
@@ -37,7 +36,7 @@ async function metricsPlugin(fastify, _opts) {
 
     // Query 2: count from the /approvals/queue HTTP endpoint (reflects actual API response)
     await new Promise((resolve) => {
-      const port = config.port;
+      const port = process.env.PORT || 3002;
       const http = require('http');
       const req = http.get(`http://127.0.0.1:${port}/approvals/queue`, { timeout: 5000 }, (res) => {
         let raw = '';

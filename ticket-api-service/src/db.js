@@ -1,9 +1,8 @@
 'use strict';
 
 const { Pool } = require('pg');
-const config = require('./config');
 
-const pool = new Pool({ connectionString: config.databaseUrl });
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
 function query(text, params) {
   return pool.query(text, params);

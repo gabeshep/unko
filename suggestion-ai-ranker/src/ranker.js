@@ -1,9 +1,8 @@
 'use strict';
 
 const Anthropic = require('@anthropic-ai/sdk');
-const config = require('./config');
 
-const client = new Anthropic(config.anthropicApiKey ? { apiKey: config.anthropicApiKey } : {});
+const client = new Anthropic();
 
 /**
  * Build a compact, token-efficient summary of places for Claude to rank.

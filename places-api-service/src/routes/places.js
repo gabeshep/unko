@@ -1,7 +1,5 @@
 'use strict';
 
-const config = require('../config');
-
 const FSQ_ENDPOINT = 'https://api.foursquare.com/v3/places/search';
 
 const FSQ_CATEGORIES = {
@@ -32,7 +30,7 @@ async function placesPlugin(fastify) {
       },
     },
   }, async (request, reply) => {
-    const apiKey = config.foursquareApiKey;
+    const apiKey = process.env.FOURSQUARE_API_KEY;
     if (!apiKey) {
       return reply.code(503).send({ error: 'FOURSQUARE_API_KEY is not configured on the server' });
     }
@@ -77,7 +75,7 @@ async function placesPlugin(fastify) {
 
   // Deep health check — verifies FOURSQUARE_API_KEY is present and that Foursquare is reachable
   fastify.get('/health/deep', async (request, reply) => {
-    const apiKey = config.foursquareApiKey;
+    const apiKey = process.env.FOURSQUARE_API_KEY;
 
     if (!apiKey) {
       const status = 'degraded';
