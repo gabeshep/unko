@@ -823,11 +823,51 @@
       transition: all 0.15s;
     }
     .btn-saved-remove:hover { background: rgba(255,80,80,0.12); color: #ff5050; }
+
+    /* ── OFFLINE BANNER ──────────────────────────────── */
+    .offline-banner {
+      position: fixed;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: #1a1a1a;
+      color: var(--cream);
+      font-size: 13px;
+      font-weight: 500;
+      padding: 10px 18px;
+      border-radius: 100px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      z-index: 9999;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+      transition: transform 0.3s ease, opacity 0.3s ease;
+      opacity: 0;
+      pointer-events: none;
+    }
+    .offline-banner.visible {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+    .offline-banner-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #ff5050;
+      flex-shrink: 0;
+    }
+    .offline-banner.online .offline-banner-dot { background: #4caf50; }
   </style>
 </head>
 <body>
 
 <!-- Incident banner — shown until dismissed, controlled by JS below -->
+<!-- Offline indicator -->
+<div id="offlineBanner" class="offline-banner" role="status" aria-live="polite">
+  <div class="offline-banner-dot"></div>
+  <span id="offlineBannerText">You're offline</span>
+</div>
+
 <div id="incident-banner" class="incident-banner" style="display:none;" role="alert" aria-live="polite">
   <div class="incident-banner-text">
     <strong>Service disruption resolved (Apr 4–6).</strong>
@@ -940,10 +980,23 @@
   }
 
   // ─────────────────────────────────────────────────────────
+  // UTILS
+  // ─────────────────────────────────────────────────────────
+  function escapeHtml(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  // ─────────────────────────────────────────────────────────
   // PROFILE & SAVED PLACES — persistent via localStorage
   // ─────────────────────────────────────────────────────────
-  const STORAGE_PROFILE = 'unko_profile';
-  const STORAGE_SAVED   = 'unko_saved_places';
+  const STORAGE_PROFILE   = 'unko_profile';
+  const STORAGE_SAVED     = 'unko_saved_places';
+  const STORAGE_SEEN_IDS  = 'unko_seen_ids';
 
   function loadProfile() {
     try { return JSON.parse(localStorage.getItem(STORAGE_PROFILE)) || { name: '', email: '' }; }
@@ -961,6 +1014,15 @@
 
   function persistSavedPlaces(places) {
     localStorage.setItem(STORAGE_SAVED, JSON.stringify(places));
+  }
+
+  function loadSeenIds() {
+    try { return new Set(JSON.parse(localStorage.getItem(STORAGE_SEEN_IDS)) || []); }
+    catch { return new Set(); }
+  }
+
+  function persistSeenIds(seenSet) {
+    localStorage.setItem(STORAGE_SEEN_IDS, JSON.stringify([...seenSet]));
   }
 
   function isSaved(id) {
@@ -1037,23 +1099,25 @@
 
     const profileName  = profile.name  || '';
     const profileEmail = profile.email || '';
+    const safeName  = escapeHtml(profileName);
+    const safeEmail = escapeHtml(profileEmail);
     body.innerHTML = `
       <div class="profile-section">
         <div class="section-label">Profile</div>
         <div class="profile-row" id="profileDisplay">
           <div class="profile-avatar">🧭</div>
           <div class="profile-name-wrap">
-            <div class="profile-name-display">${profileName || 'Anonymous explorer'}</div>
-            <div class="profile-name-hint">${profileEmail || (profileName ? 'Your display name' : 'Add your name &amp; email')}</div>
+            <div class="profile-name-display">${safeName || 'Anonymous explorer'}</div>
+            <div class="profile-name-hint">${safeEmail || (safeName ? 'Your display name' : 'Add your name &amp; email')}</div>
           </div>
           <button class="btn-edit-profile" onclick="showProfileEditForm()">Edit</button>
         </div>
         <div class="profile-edit-form hidden" id="profileEditForm">
           <input class="profile-name-input" id="profileNameInput" type="text"
-            placeholder="Your name" maxlength="32" value="${profileName}"
+            placeholder="Your name" maxlength="32" value="${safeName}"
             onkeydown="if(event.key==='Enter') saveProfileName()">
           <input class="profile-name-input" id="profileEmailInput" type="email"
-            placeholder="Your email (optional)" maxlength="128" value="${profileEmail}"
+            placeholder="Your email (optional)" maxlength="128" value="${safeEmail}"
             onkeydown="if(event.key==='Enter') saveProfileName()">
           <button class="btn-save-name" onclick="saveProfileName()">Save →</button>
         </div>
@@ -1074,8 +1138,21 @@
   function saveProfileName() {
     const nameInput  = document.getElementById('profileNameInput');
     const emailInput = document.getElementById('profileEmailInput');
-    const name  = nameInput  ? nameInput.value.trim()  : '';
-    const email = emailInput ? emailInput.value.trim() : '';
+
+    // Sanitize: strip HTML tags and enforce max lengths
+    const name  = (nameInput  ? nameInput.value.trim()  : '').replace(/<[^>]*>/g, '').slice(0, 32);
+    const email = (emailInput ? emailInput.value.trim() : '').replace(/<[^>]*>/g, '').slice(0, 128);
+
+    // Validate email format if provided
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      if (emailInput) {
+        emailInput.setCustomValidity('Please enter a valid email address');
+        emailInput.reportValidity();
+      }
+      return;
+    }
+    if (emailInput) emailInput.setCustomValidity('');
+
     const profile = loadProfile();
     profile.name  = name;
     profile.email = email;
@@ -1111,7 +1188,7 @@
     index: 0,
     browsing: false,        // true once first results are shown
     loading: false,
-    seenIds: new Set()      // IDs of suggestions already shown
+    seenIds: loadSeenIds()  // IDs of suggestions already shown — persisted across sessions
   };
 
   // ─────────────────────────────────────────────────────────
@@ -1160,11 +1237,15 @@
           if (city) setLocationLabel(city, true);
         } catch { /* non-critical, silently ignore */ }
       },
-      () => {
+      (err) => {
         setLocationLabel('Enable location', false);
+        const isDenied = err && err.code === 1; // PERMISSION_DENIED
+        const msg = isDenied
+          ? 'Location access was denied. Allow it in your browser settings, then tap Retry.'
+          : 'Could not get your location. Check your connection or browser settings, then tap Retry.';
         setButtons('error');
-        showZeroState('location', 'Allow location access in your browser settings, then refresh the page to find places near you.');
-        track('location_denied');
+        showZeroState('location', msg, 'Retry Location →', initLocation);
+        track('location_denied', { code: err ? err.code : null });
       },
       { enableHighAccuracy: false, timeout: 12000 }
     );
@@ -1224,7 +1305,11 @@
       url.searchParams.set('cat', cat);
       if (state.openNow) url.searchParams.set('open_now', 'true');
       res = await fetch(url.toString(), { headers: { 'Accept': 'application/json' } });
-      if (!res.ok) throw new Error(`Places API error: ${res.status}`);
+      if (!res.ok) {
+        if (res.status === 429) throw new Error('Places API rate limit reached. Please wait a moment and try again.');
+        if (res.status >= 500) throw new Error(`Places service is temporarily unavailable (${res.status}). Please try again shortly.`);
+        throw new Error(`Places API error: ${res.status}`);
+      }
     } else {
       // Direct Foursquare call for local development
       const apiKey = window.FOURSQUARE_API_KEY;
@@ -1240,7 +1325,11 @@
       res = await fetch(url.toString(), {
         headers: { 'Authorization': `Bearer ${apiKey}`, 'Accept': 'application/json' }
       });
-      if (!res.ok) throw new Error(`Foursquare API error: ${res.status}`);
+      if (!res.ok) {
+        if (res.status === 429) throw new Error('Places API rate limit reached. Please wait a moment and try again.');
+        if (res.status >= 500) throw new Error(`Places service is temporarily unavailable (${res.status}). Please try again shortly.`);
+        throw new Error(`Foursquare API error: ${res.status}`);
+      }
     }
 
     const data = await res.json();
@@ -1263,7 +1352,7 @@
   async function fetchSuggestions() {
     if (!state.locationReady) {
       setButtons('error');
-      showZeroState('location', 'Still waiting for your location. Please allow location access and try again.');
+      showZeroState('location', 'Still waiting for your location. Please allow location access and try again.', 'Retry Location →', initLocation);
       return;
     }
     if (state.loading) return;
@@ -1299,6 +1388,7 @@
         if (unfilteredCount > 0) {
           // All results have been seen — clear seenIds and cycle through again
           state.seenIds.clear();
+          persistSeenIds(state.seenIds);
           state.loading = false;
           fetchSuggestions();
           return;
@@ -1324,12 +1414,11 @@
     } catch (err) {
       console.error(err);
       state.loading = false;
-      track('search_failed', { category: state.activeCategory, error: err.message });
-      showError(
-        'Could not load nearby places. Check your connection and try again.',
-        'Try Again →',
-        fetchSuggestions
-      );
+      track('search_failed', { category: state.activeCategory, error: err.message, offline: !navigator.onLine });
+      const errMsg = navigator.onLine
+        ? 'Could not load nearby places. Check your connection and try again.'
+        : 'You\'re offline. Connect to the internet to discover new places.';
+      showError(errMsg, 'Try Again →', fetchSuggestions);
     }
   }
 
@@ -1434,6 +1523,7 @@
     if (!s) {
       // Pool exhausted — clear seenIds so the user can cycle through again
       state.seenIds.clear();
+      persistSeenIds(state.seenIds);
       state.pool  = [];
       state.index = 0;
       fetchSuggestions();
@@ -1493,28 +1583,24 @@
       setTimeout(() => {
         area.innerHTML = '';
         area.appendChild(card);
-      }, 210);
-    } else {
-      area.innerHTML = '';
-      area.appendChild(card);
-    }
+      }
 
-    const remaining = state.pool.length - state.index - 1;
-    setButtons('browsing', remaining);
-    updateSaveBtn(s.id);
-    track('suggestion_viewed', { category: s.cat, position: state.index, remaining });
+      const remaining = state.pool.length - state.index - 1;
+      setButtons('browsing', remaining);
+      updateSaveBtn(s.id);
+      track('suggestion_viewed', { category: s.cat, position: state.index, remaining });
     } catch (err) {
-        console.error('showSuggestion render error:', err);
-        state.index++;
-        if (state.index < state.pool.length) {
-          showSuggestion();
-        } else {
-          showError(
-            'Could not display any suggestions nearby. Try refreshing to search again.',
-            'Try Again →',
-            fetchSuggestions
-          );
-        }
+      console.error('showSuggestion render error:', err);
+      state.index++;
+      if (state.index < state.pool.length) {
+        showSuggestion();
+      } else {
+        showError(
+          'Could not display any suggestions nearby. Try refreshing to search again.',
+          'Try Again →',
+          fetchSuggestions
+        );
+      }
     }
   }
 
@@ -1583,6 +1669,7 @@
     const current = state.pool[state.index];
     if (current) {
       state.seenIds.add(current.id);
+      persistSeenIds(state.seenIds);
       track('place_skipped', { category: current.cat, position: state.index });
     }
     state.index++;
@@ -1634,9 +1721,41 @@
         const prev = btn.innerHTML;
         btn.innerHTML = '✓';
         setTimeout(() => { btn.innerHTML = prev; }, 1500);
-      }).catch(() => {});
+      }).catch(() => {
+        const btn = document.getElementById('shareBtn');
+        if (btn) {
+          const prev = btn.innerHTML;
+          btn.innerHTML = '✕';
+          setTimeout(() => { btn.innerHTML = prev; }, 1500);
+        }
+      });
     }
   }
+
+  // ─────────────────────────────────────────────────────────
+  // OFFLINE DETECTION
+  // ─────────────────────────────────────────────────────────
+  (function initOfflineBanner() {
+    const banner   = document.getElementById('offlineBanner');
+    const bannerTx = document.getElementById('offlineBannerText');
+    let hideTimer;
+
+    function showBanner(isOnline) {
+      clearTimeout(hideTimer);
+      banner.classList.toggle('online', isOnline);
+      bannerTx.textContent = isOnline ? 'Back online' : 'You\'re offline — showing cached results';
+      banner.classList.add('visible');
+      if (isOnline) {
+        hideTimer = setTimeout(() => banner.classList.remove('visible'), 3000);
+      }
+    }
+
+    window.addEventListener('offline', () => showBanner(false));
+    window.addEventListener('online',  () => showBanner(true));
+
+    // Show banner on load if already offline
+    if (!navigator.onLine) showBanner(false);
+  })();
 
   // ─────────────────────────────────────────────────────────
   // ─────────────────────────────────────────────────────────
