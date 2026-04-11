@@ -1,6 +1,7 @@
 'use strict';
 
 const fastify = require('fastify');
+const config = require('./config');
 const approvalsPlugin = require('./routes/approvals');
 const metricsPlugin = require('./routes/metrics');
 
@@ -10,9 +11,7 @@ async function main() {
   app.register(approvalsPlugin);
   app.register(metricsPlugin);
 
-  const port = parseInt(process.env.PORT || '3002', 10);
-
-  await app.listen({ port, host: '0.0.0.0' });
+  await app.listen({ port: config.port, host: '0.0.0.0' });
 }
 
 main().catch((err) => {

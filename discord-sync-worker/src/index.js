@@ -1,6 +1,7 @@
 'use strict';
 
 const fastify = require('fastify');
+const config = require('./config');
 const db = require('./db');
 const { webhookHandler } = require('./webhook');
 const { deployNotifyHandler } = require('./deploy-notify');
@@ -23,11 +24,9 @@ async function main() {
   app.post('/webhook/deploy/notify', deployNotifyHandler);
   app.post('/webhook/incident/broadcast', incidentNotifyHandler);
 
-  const port = parseInt(process.env.PORT || '3001', 10);
+  await app.listen({ port: config.port, host: '0.0.0.0' });
 
-  await app.listen({ port, host: '0.0.0.0' });
-
-  canary.startCanary(port);
+  canary.startCanary(config.port);
 }
 
 main().catch((err) => {
