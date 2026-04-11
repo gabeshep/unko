@@ -921,6 +921,18 @@
   }
 
   // ─────────────────────────────────────────────────────────
+  // UTILS
+  // ─────────────────────────────────────────────────────────
+  function escapeHtml(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  // ─────────────────────────────────────────────────────────
   // PROFILE & SAVED PLACES — persistent via localStorage
   // ─────────────────────────────────────────────────────────
   const STORAGE_PROFILE = 'unko_profile';
@@ -1018,23 +1030,25 @@
 
     const profileName  = profile.name  || '';
     const profileEmail = profile.email || '';
+    const safeName  = escapeHtml(profileName);
+    const safeEmail = escapeHtml(profileEmail);
     body.innerHTML = `
       <div class="profile-section">
         <div class="section-label">Profile</div>
         <div class="profile-row" id="profileDisplay">
           <div class="profile-avatar">🧭</div>
           <div class="profile-name-wrap">
-            <div class="profile-name-display">${profileName || 'Anonymous explorer'}</div>
-            <div class="profile-name-hint">${profileEmail || (profileName ? 'Your display name' : 'Add your name &amp; email')}</div>
+            <div class="profile-name-display">${safeName || 'Anonymous explorer'}</div>
+            <div class="profile-name-hint">${safeEmail || (safeName ? 'Your display name' : 'Add your name &amp; email')}</div>
           </div>
           <button class="btn-edit-profile" onclick="showProfileEditForm()">Edit</button>
         </div>
         <div class="profile-edit-form hidden" id="profileEditForm">
           <input class="profile-name-input" id="profileNameInput" type="text"
-            placeholder="Your name" maxlength="32" value="${profileName}"
+            placeholder="Your name" maxlength="32" value="${safeName}"
             onkeydown="if(event.key==='Enter') saveProfileName()">
           <input class="profile-name-input" id="profileEmailInput" type="email"
-            placeholder="Your email (optional)" maxlength="128" value="${profileEmail}"
+            placeholder="Your email (optional)" maxlength="128" value="${safeEmail}"
             onkeydown="if(event.key==='Enter') saveProfileName()">
           <button class="btn-save-name" onclick="saveProfileName()">Save →</button>
         </div>
@@ -1055,8 +1069,21 @@
   function saveProfileName() {
     const nameInput  = document.getElementById('profileNameInput');
     const emailInput = document.getElementById('profileEmailInput');
-    const name  = nameInput  ? nameInput.value.trim()  : '';
-    const email = emailInput ? emailInput.value.trim() : '';
+
+    // Sanitize: strip HTML tags and enforce max lengths
+    const name  = (nameInput  ? nameInput.value.trim()  : '').replace(/<[^>]*>/g, '').slice(0, 32);
+    const email = (emailInput ? emailInput.value.trim() : '').replace(/<[^>]*>/g, '').slice(0, 128);
+
+    // Validate email format if provided
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      if (emailInput) {
+        emailInput.setCustomValidity('Please enter a valid email address');
+        emailInput.reportValidity();
+      }
+      return;
+    }
+    if (emailInput) emailInput.setCustomValidity('');
+
     const profile = loadProfile();
     profile.name  = name;
     profile.email = email;
