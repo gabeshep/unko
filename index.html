@@ -1181,11 +1181,15 @@
           if (city) setLocationLabel(city, true);
         } catch { /* non-critical, silently ignore */ }
       },
-      () => {
+      (err) => {
         setLocationLabel('Enable location', false);
+        const isDenied = err && err.code === 1; // PERMISSION_DENIED
+        const msg = isDenied
+          ? 'Location access was denied. Allow it in your browser settings, then tap Retry.'
+          : 'Could not get your location. Check your connection or browser settings, then tap Retry.';
         setButtons('error');
-        showZeroState('location', 'Allow location access in your browser settings, then refresh the page to find places near you.');
-        track('location_denied');
+        showZeroState('location', msg, 'Retry Location →', initLocation);
+        track('location_denied', { code: err ? err.code : null });
       },
       { enableHighAccuracy: false, timeout: 12000 }
     );
@@ -1245,7 +1249,11 @@
       url.searchParams.set('cat', cat);
       if (state.openNow) url.searchParams.set('open_now', 'true');
       res = await fetch(url.toString(), { headers: { 'Accept': 'application/json' } });
-      if (!res.ok) throw new Error(`Places API error: ${res.status}`);
+      if (!res.ok) {
+        if (res.status === 429) throw new Error('Places API rate limit reached. Please wait a moment and try again.');
+        if (res.status >= 500) throw new Error(`Places service is temporarily unavailable (${res.status}). Please try again shortly.`);
+        throw new Error(`Places API error: ${res.status}`);
+      }
     } else {
       // Direct Foursquare call for local development
       const apiKey = window.FOURSQUARE_API_KEY;
@@ -1261,7 +1269,11 @@
       res = await fetch(url.toString(), {
         headers: { 'Authorization': `Bearer ${apiKey}`, 'Accept': 'application/json' }
       });
-      if (!res.ok) throw new Error(`Foursquare API error: ${res.status}`);
+      if (!res.ok) {
+        if (res.status === 429) throw new Error('Places API rate limit reached. Please wait a moment and try again.');
+        if (res.status >= 500) throw new Error(`Places service is temporarily unavailable (${res.status}). Please try again shortly.`);
+        throw new Error(`Foursquare API error: ${res.status}`);
+      }
     }
 
     const data = await res.json();
@@ -1283,7 +1295,7 @@
   async function fetchSuggestions() {
     if (!state.locationReady) {
       setButtons('error');
-      showZeroState('location', 'Still waiting for your location. Please allow location access and try again.');
+      showZeroState('location', 'Still waiting for your location. Please allow location access and try again.', 'Retry Location →', initLocation);
       return;
     }
     if (state.loading) return;
@@ -1472,54 +1484,54 @@
     }
 
     try {
-    const dist    = haversineMeters(state.lat, state.lon, s.lat, s.lon);
-    const detail  = s.detail ? ` · ${s.detail}` : '';
-    const addrLine = s.address
-      ? `<div class="card-address">📍 ${s.address}</div>`
-      : '';
+      const dist    = haversineMeters(state.lat, state.lon, s.lat, s.lon);
+      const detail  = s.detail ? ` · ${s.detail}` : '';
+      const addrLine = s.address
+        ? `<div class="card-address">📍 ${s.address}</div>`
+        : '';
 
-    const card = document.createElement('div');
-    card.className = 'suggestion-card';
-    card.innerHTML = `
-      <div class="card-glow" style="background: ${catColors[s.cat]}"></div>
-      <span class="card-badge badge-${s.cat}">${catEmoji[s.cat]} ${s.type}${detail}</span>
-      <div class="card-name">${s.name}</div>
-      <div class="card-meta">
-        <span>📏 ${formatDist(dist)} away</span>
-      </div>
-      ${addrLine}
-    `;
+      const card = document.createElement('div');
+      card.className = 'suggestion-card';
+      card.innerHTML = `
+        <div class="card-glow" style="background: ${catColors[s.cat]}"></div>
+        <span class="card-badge badge-${s.cat}">${catEmoji[s.cat]} ${s.type}${detail}</span>
+        <div class="card-name">${s.name}</div>
+        <div class="card-meta">
+          <span>📏 ${formatDist(dist)} away</span>
+        </div>
+        ${addrLine}
+      `;
 
-    const area     = document.getElementById('cardArea');
-    const existing = area.querySelector('.suggestion-card');
+      const area     = document.getElementById('cardArea');
+      const existing = area.querySelector('.suggestion-card');
 
-    if (existing) {
-      existing.classList.add('card-exit');
-      setTimeout(() => {
+      if (existing) {
+        existing.classList.add('card-exit');
+        setTimeout(() => {
+          area.innerHTML = '';
+          area.appendChild(card);
+        }, 210);
+      } else {
         area.innerHTML = '';
         area.appendChild(card);
-      }, 210);
-    } else {
-      area.innerHTML = '';
-      area.appendChild(card);
-    }
+      }
 
-    const remaining = state.pool.length - state.index - 1;
-    setButtons('browsing', remaining);
-    updateSaveBtn(s.id);
-    track('suggestion_viewed', { category: s.cat, position: state.index, remaining });
+      const remaining = state.pool.length - state.index - 1;
+      setButtons('browsing', remaining);
+      updateSaveBtn(s.id);
+      track('suggestion_viewed', { category: s.cat, position: state.index, remaining });
     } catch (err) {
-        console.error('showSuggestion render error:', err);
-        state.index++;
-        if (state.index < state.pool.length) {
-          showSuggestion();
-        } else {
-          showError(
-            'Could not display any suggestions nearby. Try refreshing to search again.',
-            'Try Again →',
-            fetchSuggestions
-          );
-        }
+      console.error('showSuggestion render error:', err);
+      state.index++;
+      if (state.index < state.pool.length) {
+        showSuggestion();
+      } else {
+        showError(
+          'Could not display any suggestions nearby. Try refreshing to search again.',
+          'Try Again →',
+          fetchSuggestions
+        );
+      }
     }
   }
 
@@ -1639,7 +1651,14 @@
         const prev = btn.innerHTML;
         btn.innerHTML = '✓';
         setTimeout(() => { btn.innerHTML = prev; }, 1500);
-      }).catch(() => {});
+      }).catch(() => {
+        const btn = document.getElementById('shareBtn');
+        if (btn) {
+          const prev = btn.innerHTML;
+          btn.innerHTML = '✕';
+          setTimeout(() => { btn.innerHTML = prev; }, 1500);
+        }
+      });
     }
   }
 
