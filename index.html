@@ -856,6 +856,10 @@
       <span class="pill-dot"></span>
       Open now
     </button>
+    <button class="toggle-pill" id="walkingOnlyBtn" onclick="toggleWalkingOnly()">
+      <span class="pill-dot"></span>
+      Walking distance
+    </button>
   </div>
 
   <!-- Main card area -->
@@ -1088,6 +1092,7 @@
     locationReady: false,
     activeCategory: null,   // null | 'do' | 'eat' | 'see'
     openNow: false,         // filter to currently open places
+    walkingOnly: false,     // filter to places within walking distance (≤1500m)
     pool: [],               // normalized suggestion objects
     index: 0,
     browsing: false,        // true once first results are shown
@@ -1102,6 +1107,23 @@
     state.openNow = !state.openNow;
     document.getElementById('openNowBtn').classList.toggle('active', state.openNow);
     track('open_now_toggled', { enabled: state.openNow });
+
+    if (state.browsing) {
+      state.pool  = [];
+      state.index = 0;
+      fetchSuggestions();
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // WALKING DISTANCE TOGGLE
+  // ─────────────────────────────────────────────────────────
+  const WALKING_DISTANCE_M = 1500;
+
+  function toggleWalkingOnly() {
+    state.walkingOnly = !state.walkingOnly;
+    document.getElementById('walkingOnlyBtn').classList.toggle('active', state.walkingOnly);
+    track('walking_only_toggled', { enabled: state.walkingOnly });
 
     if (state.browsing) {
       state.pool  = [];
@@ -1271,6 +1293,11 @@
         );
       }
 
+      // Filter to walking distance only if enabled
+      if (state.walkingOnly) {
+        pool = pool.filter(el => haversineMeters(state.lat, state.lon, el.lat, el.lon) <= WALKING_DISTANCE_M);
+      }
+
       // Filter out already-seen suggestions
       const unfilteredCount = pool.length;
       pool = pool.filter(el => !state.seenIds.has(el.id));
@@ -1284,8 +1311,12 @@
           return;
         }
         setButtons('error');
-        const emptyMsg = state.openNow
+        const emptyMsg = state.openNow && state.walkingOnly
+          ? "Nothing open within walking distance right now. Try turning off Open now or Walking distance filters."
+          : state.openNow
           ? "Nothing open nearby right now. Try turning off the Open now filter, or check back later."
+          : state.walkingOnly
+          ? "Nothing within walking distance. Try turning off the Walking distance filter to see more."
           : "Try a different category, or check back when you're somewhere with more going on.";
         showZeroState('empty', emptyMsg);
         track('search_empty', { category: state.activeCategory, openNow: state.openNow });
