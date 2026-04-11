@@ -14,13 +14,12 @@
  * so they are visible in reports but excluded from anomaly baseline calculations.
  */
 
-const config = require('./config');
 const db = require('./db');
 
-const TOKEN_COST_PER_1K    = config.tokenCostPer1k;
-const COMPUTE_COST_PER_MIN = config.computeCostPerMin;
-const ANOMALY_THRESHOLD    = config.anomalyThreshold;
-const BREAKGLASS_TAG       = config.breakglassTag;
+const TOKEN_COST_PER_1K    = parseFloat(process.env.TOKEN_COST_PER_1K    || '0.003');
+const COMPUTE_COST_PER_MIN = parseFloat(process.env.COMPUTE_COST_PER_MIN || '0.008');
+const ANOMALY_THRESHOLD    = parseFloat(process.env.ANOMALY_THRESHOLD    || '1.5');   // 50 % above baseline
+const BREAKGLASS_TAG       = 'SEV-1-BREAKGLASS';
 
 /**
  * Aggregate cost data for all tickets that have un-summarised telemetry within

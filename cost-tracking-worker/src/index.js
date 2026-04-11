@@ -10,7 +10,6 @@
  */
 
 const fastify = require('fastify');
-const config = require('./config');
 const { emitStep }  = require('./telemetry-emitter');
 const { emitJob }   = require('./ci-telemetry');
 const { aggregatePeriod, checkAnomalies } = require('./aggregator');
@@ -73,7 +72,8 @@ async function main() {
     return reply.code(200).send({ ok: true });
   });
 
-  await app.listen({ port: config.port, host: '0.0.0.0' });
+  const port = parseInt(process.env.PORT || '3003', 10);
+  await app.listen({ port, host: '0.0.0.0' });
 }
 
 main().catch((err) => {

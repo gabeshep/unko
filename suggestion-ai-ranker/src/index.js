@@ -53,8 +53,8 @@ fastify.post('/rank', {
 fastify.get('/health', async () => ({ status: 'ok' }));
 
 async function main() {
-  const config = require('./config');
-  await fastify.listen({ port: config.port, host: '0.0.0.0' });
+  const port = parseInt(process.env.PORT || '3004', 10);
+  await fastify.listen({ port, host: '0.0.0.0' });
 }
 
 main().catch((err) => {

@@ -3,14 +3,13 @@
 const crypto = require('crypto');
 const https = require('https');
 const pino = require('pino');
-const config = require('./config');
 
 const logger = pino();
 
 async function deployNotifyHandler(request, reply) {
   const rawBody = request.body; // Buffer, thanks to addContentTypeParser
   const signature = request.headers['x-deploy-signature'] || '';
-  const secret = config.deployNotifySecret;
+  const secret = process.env.DEPLOY_NOTIFY_SECRET;
 
   // Compute HMAC-SHA256
   const hmac = crypto.createHmac('sha256', secret);
@@ -46,7 +45,7 @@ async function deployNotifyHandler(request, reply) {
     return reply.code(400).send({ error: 'Missing required fields' });
   }
 
-  const enabled = config.deploymentNotifyEnabled;
+  const enabled = process.env.DEPLOYMENT_NOTIFY_ENABLED === 'true';
 
   if (!enabled) {
     logger.info({ msg: 'deploy_notify', status, commit_sha, enabled: false, discord_ok: false });
@@ -64,7 +63,7 @@ async function deployNotifyHandler(request, reply) {
 
   // POST to Discord webhook
   const discordPayload = JSON.stringify({ content });
-  const webhookUrl = config.discordDeployWebhookUrl;
+  const webhookUrl = process.env.DISCORD_DEPLOY_WEBHOOK_URL || '';
 
   let discord_ok = false;
   try {

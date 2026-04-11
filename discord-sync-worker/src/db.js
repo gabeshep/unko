@@ -2,13 +2,12 @@
 
 const { Pool } = require('pg');
 const pino = require('pino');
-const config = require('./config');
 
 const logger = pino();
 let pool;
 
 async function init() {
-  pool = new Pool({ connectionString: config.databaseUrl });
+  pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
   // Column guard: verify required columns exist in approvals table
   const approvalsResult = await pool.query(`
