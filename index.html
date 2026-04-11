@@ -804,11 +804,51 @@
       transition: all 0.15s;
     }
     .btn-saved-remove:hover { background: rgba(255,80,80,0.12); color: #ff5050; }
+
+    /* ── OFFLINE BANNER ──────────────────────────────── */
+    .offline-banner {
+      position: fixed;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: #1a1a1a;
+      color: var(--cream);
+      font-size: 13px;
+      font-weight: 500;
+      padding: 10px 18px;
+      border-radius: 100px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      z-index: 9999;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+      transition: transform 0.3s ease, opacity 0.3s ease;
+      opacity: 0;
+      pointer-events: none;
+    }
+    .offline-banner.visible {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+    .offline-banner-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #ff5050;
+      flex-shrink: 0;
+    }
+    .offline-banner.online .offline-banner-dot { background: #4caf50; }
   </style>
 </head>
 <body>
 
 <!-- Incident banner — shown until dismissed, controlled by JS below -->
+<!-- Offline indicator -->
+<div id="offlineBanner" class="offline-banner" role="status" aria-live="polite">
+  <div class="offline-banner-dot"></div>
+  <span id="offlineBannerText">You're offline</span>
+</div>
+
 <div id="incident-banner" class="incident-banner" style="display:none;" role="alert" aria-live="polite">
   <div class="incident-banner-text">
     <strong>Service disruption resolved (Apr 4–6).</strong>
@@ -1304,12 +1344,11 @@
     } catch (err) {
       console.error(err);
       state.loading = false;
-      track('search_failed', { category: state.activeCategory, error: err.message });
-      showError(
-        'Could not load nearby places. Check your connection and try again.',
-        'Try Again →',
-        fetchSuggestions
-      );
+      track('search_failed', { category: state.activeCategory, error: err.message, offline: !navigator.onLine });
+      const errMsg = navigator.onLine
+        ? 'Could not load nearby places. Check your connection and try again.'
+        : 'You\'re offline. Connect to the internet to discover new places.';
+      showError(errMsg, 'Try Again →', fetchSuggestions);
     }
   }
 
@@ -1603,6 +1642,31 @@
       }).catch(() => {});
     }
   }
+
+  // ─────────────────────────────────────────────────────────
+  // OFFLINE DETECTION
+  // ─────────────────────────────────────────────────────────
+  (function initOfflineBanner() {
+    const banner   = document.getElementById('offlineBanner');
+    const bannerTx = document.getElementById('offlineBannerText');
+    let hideTimer;
+
+    function showBanner(isOnline) {
+      clearTimeout(hideTimer);
+      banner.classList.toggle('online', isOnline);
+      bannerTx.textContent = isOnline ? 'Back online' : 'You\'re offline — showing cached results';
+      banner.classList.add('visible');
+      if (isOnline) {
+        hideTimer = setTimeout(() => banner.classList.remove('visible'), 3000);
+      }
+    }
+
+    window.addEventListener('offline', () => showBanner(false));
+    window.addEventListener('online',  () => showBanner(true));
+
+    // Show banner on load if already offline
+    if (!navigator.onLine) showBanner(false);
+  })();
 
   // ─────────────────────────────────────────────────────────
   // ─────────────────────────────────────────────────────────
