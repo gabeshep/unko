@@ -12,7 +12,852 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/styles.css">
+  <style>
+    :root {
+      --bg:        #3C3C3C;
+      --surface:   #2A2A2A;
+      --surface-2: #383838;
+      --gold:      #E8920A;
+      --cream:     #F5ECD8;
+      --muted:     #888888;
+      --do:        #1A6B72;
+      --eat:       #D45A2A;
+      --see:       #5B3E8A;
+      --radius:    22px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--cream);
+      overflow: hidden;
+    }
+
+    /* Subtle grain overlay for depth */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 999;
+    }
+
+    /* Ambient background glow */
+    body::before {
+      content: '';
+      position: fixed;
+      width: 600px; height: 600px;
+      top: -200px; left: 50%;
+      transform: translateX(-50%);
+      background: radial-gradient(circle, rgba(232,146,10,0.06) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    #app {
+      position: relative;
+      z-index: 1;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      max-width: 480px;
+      margin: 0 auto;
+      padding: 28px 20px 24px;
+      gap: 16px;
+    }
+
+    /* ── HEADER ─────────────────────────────── */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .logo {
+      font-family: 'Playfair Display', serif;
+      font-size: 24px;
+      font-weight: 900;
+      letter-spacing: 0.18em;
+      color: var(--gold);
+      text-transform: uppercase;
+    }
+
+    .location-badge {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 12px;
+      color: var(--muted);
+      max-width: 160px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .location-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--muted);
+      flex-shrink: 0;
+      transition: background 0.3s;
+    }
+    .location-dot.active { background: #4ADE80; }
+
+    /* ── CATEGORY BUTTONS ────────────────────── */
+    .categories {
+      display: flex;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .cat-btn {
+      flex: 1;
+      padding: 13px 8px 11px;
+      border-radius: 16px;
+      border: 1.5px solid var(--surface-2);
+      background: var(--surface);
+      color: var(--muted);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.18s ease;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .cat-btn .icon { font-size: 22px; line-height: 1; }
+    .cat-btn:hover { border-color: var(--muted); color: var(--cream); background: var(--surface-2); }
+
+    .cat-btn.active[data-cat="do"]  { background: rgba(26,107,114,0.1);  border-color: var(--do);  color: var(--do);  }
+    .cat-btn.active[data-cat="eat"] { background: rgba(212,90,42,0.1);   border-color: var(--eat); color: var(--eat); }
+    .cat-btn.active[data-cat="see"] { background: rgba(91,62,138,0.1);   border-color: var(--see); color: var(--see); }
+
+    /* ── CARD AREA ───────────────────────────── */
+    .card-area {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* ── ZERO STATE (unified empty / error / start states) ── */
+    .zero-state {
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      padding: 0 16px;
+      width: 100%;
+    }
+
+    .zero-icon-wrap {
+      position: relative;
+      width: 88px; height: 88px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .zero-ring {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      border: 1.5px solid rgba(232,146,10,0.2);
+      animation: pulse-ring 2.5s ease-in-out infinite;
+    }
+    .zero-ring:nth-child(2) { inset: -11px; border-color: rgba(232,146,10,0.1);  animation-delay: 0.5s; }
+    .zero-ring:nth-child(3) { inset: -22px; border-color: rgba(232,146,10,0.05); animation-delay: 1s;   }
+
+    /* Muted rings for error / empty variants */
+    .zero-state[data-variant="error"]   .zero-ring,
+    .zero-state[data-variant="empty"]   .zero-ring,
+    .zero-state[data-variant="location"] .zero-ring {
+      border-color: rgba(136,136,136,0.15);
+      animation: none;
+    }
+    .zero-state[data-variant="error"]    .zero-ring:nth-child(2),
+    .zero-state[data-variant="empty"]    .zero-ring:nth-child(2),
+    .zero-state[data-variant="location"] .zero-ring:nth-child(2) { border-color: rgba(136,136,136,0.08); }
+    .zero-state[data-variant="error"]    .zero-ring:nth-child(3),
+    .zero-state[data-variant="empty"]    .zero-ring:nth-child(3),
+    .zero-state[data-variant="location"] .zero-ring:nth-child(3) { border-color: rgba(136,136,136,0.04); }
+
+    @keyframes pulse-ring {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: 0.4; transform: scale(1.05); }
+    }
+
+    .zero-icon { font-size: 44px; position: relative; z-index: 1; line-height: 1; }
+
+    .zero-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 26px;
+      font-weight: 700;
+      line-height: 1.2;
+      color: var(--cream);
+    }
+
+    .zero-body {
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1.65;
+      max-width: 268px;
+    }
+
+    .zero-hint {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--muted);
+      background: var(--surface);
+      border: 1px solid var(--surface-2);
+      border-radius: 100px;
+      padding: 5px 12px;
+      letter-spacing: 0.02em;
+    }
+
+    /* Suggestion card */
+    .suggestion-card {
+      width: 100%;
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 30px 26px 28px;
+      border: 1px solid var(--surface-2);
+      position: relative;
+      overflow: hidden;
+      animation: card-in 0.32s cubic-bezier(0.34, 1.4, 0.64, 1) forwards;
+    }
+
+    @keyframes card-in {
+      from { opacity: 0; transform: translateY(28px) scale(0.95); }
+      to   { opacity: 1; transform: translateY(0)   scale(1);    }
+    }
+
+    .card-exit {
+      animation: card-out 0.22s ease-in forwards !important;
+    }
+
+    @keyframes card-out {
+      from { opacity: 1; transform: translateY(0)    scale(1);    }
+      to   { opacity: 0; transform: translateY(-24px) scale(0.96); }
+    }
+
+    .card-glow {
+      position: absolute;
+      top: -40px; right: -40px;
+      width: 180px; height: 180px;
+      border-radius: 50%;
+      filter: blur(50px);
+      opacity: 0.18;
+      pointer-events: none;
+    }
+
+    .card-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 11px;
+      border-radius: 100px;
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      margin-bottom: 18px;
+    }
+
+    .badge-do  { background: rgba(26,107,114,0.12);  color: var(--do);  }
+    .badge-eat { background: rgba(212,90,42,0.12);   color: var(--eat); }
+    .badge-see { background: rgba(91,62,138,0.12);   color: var(--see); }
+
+    .card-name {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(26px, 6vw, 36px);
+      font-weight: 700;
+      line-height: 1.15;
+      color: var(--cream);
+      margin-bottom: 14px;
+      letter-spacing: -0.01em;
+    }
+
+    .card-meta {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .card-meta span { display: flex; align-items: center; gap: 5px; }
+
+    .card-address {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.55;
+      margin-top: 4px;
+    }
+
+    .card-hours {
+      font-size: 13px;
+      color: var(--muted);
+      margin-top: 4px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .hours-open {
+      color: #4caf7d;
+      font-weight: 600;
+    }
+
+    .hours-closed {
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    /* Loading */
+    .loading-card {
+      width: 100%;
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 52px 28px;
+      border: 1px solid var(--surface-2);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 18px;
+    }
+
+    .spinner {
+      width: 36px; height: 36px;
+      border: 2px solid var(--surface-2);
+      border-top-color: var(--gold);
+      border-radius: 50%;
+      animation: spin 0.75s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .loading-msg {
+      font-size: 14px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    /* (error-card removed — unified into .zero-state) */
+
+    /* ── ACTIONS ─────────────────────────────── */
+    .actions {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .btn-go {
+      width: 100%;
+      padding: 18px;
+      border-radius: 16px;
+      border: none;
+      background: var(--gold);
+      color: var(--bg);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 16px;
+      font-weight: 500;
+      letter-spacing: 0.02em;
+      cursor: pointer;
+      transition: all 0.18s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn-go:hover  { background: #FFB800; transform: translateY(-1px); }
+    .btn-go:active { transform: translateY(0); background: #d99500; }
+    .btn-go:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+
+    .btn-nah {
+      width: 100%;
+      padding: 15px;
+      border-radius: 16px;
+      border: 1.5px solid var(--surface-2);
+      background: transparent;
+      color: var(--muted);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 15px;
+      font-weight: 400;
+      cursor: pointer;
+      transition: all 0.18s ease;
+    }
+
+    .btn-nah:hover  { border-color: var(--muted); color: var(--cream); }
+    .btn-nah:active { background: var(--surface); }
+    .btn-nah:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    .btn-row {
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn-row .btn-go { flex: 1; }
+
+    .btn-share {
+      padding: 18px 20px;
+      border-radius: 16px;
+      border: 1.5px solid var(--surface-2);
+      background: var(--surface);
+      color: var(--muted);
+      font-size: 20px;
+      cursor: pointer;
+      transition: all 0.18s ease;
+      flex-shrink: 0;
+      line-height: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .btn-share:hover  { border-color: var(--muted); color: var(--cream); background: var(--surface-2); }
+    .btn-share:active { background: var(--surface-2); }
+
+    .nearby-count {
+      text-align: center;
+      font-size: 12px;
+      color: var(--muted);
+      letter-spacing: 0.02em;
+    }
+
+    /* ── OPEN NOW TOGGLE ─────────────────────── */
+    .filter-row {
+      display: flex;
+      gap: 8px;
+      flex-shrink: 0;
+      align-items: center;
+    }
+
+    .toggle-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 14px;
+      border-radius: 100px;
+      border: 1.5px solid var(--surface-2);
+      background: var(--surface);
+      color: var(--muted);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      cursor: pointer;
+      transition: all 0.18s ease;
+      user-select: none;
+    }
+    .toggle-pill:hover { border-color: var(--muted); color: var(--cream); }
+    .toggle-pill.active {
+      border-color: #4ADE80;
+      color: #4ADE80;
+      background: rgba(74,222,128,0.08);
+    }
+    .toggle-pill .pill-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+      flex-shrink: 0;
+    }
+
+    .hidden { display: none !important; }
+
+    /* ── INCIDENT BANNER ────────────────────── */
+    .incident-banner {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 200;
+      background: var(--surface);
+      border-bottom: 2px solid #E8920A;
+      padding: 10px 16px;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      font-size: 13px;
+      color: var(--cream);
+      line-height: 1.55;
+    }
+
+    .incident-banner-text {
+      flex: 1;
+    }
+
+    .incident-banner-dismiss {
+      flex-shrink: 0;
+      background: transparent;
+      border: 1.5px solid var(--surface-2);
+      border-radius: 8px;
+      color: var(--muted);
+      font-size: 13px;
+      cursor: pointer;
+      padding: 2px 8px;
+      line-height: 1.5;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .incident-banner-dismiss:hover { border-color: var(--muted); color: var(--cream); }
+
+    /* ── PROFILE BUTTON ──────────────────────── */
+    .btn-profile {
+      width: 38px; height: 38px;
+      border-radius: 50%;
+      border: 1.5px solid var(--surface-2);
+      background: var(--surface);
+      color: var(--muted);
+      font-size: 17px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.18s ease;
+      flex-shrink: 0;
+      position: relative;
+    }
+    .btn-profile:hover { border-color: var(--gold); color: var(--gold); }
+    .btn-profile .saved-dot {
+      position: absolute;
+      top: -2px; right: -2px;
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--gold);
+      border: 1.5px solid var(--bg);
+      display: none;
+    }
+    .btn-profile.has-saves .saved-dot { display: block; }
+
+    /* ── SAVE BUTTON ─────────────────────────── */
+    .btn-save {
+      padding: 18px 20px;
+      border-radius: 16px;
+      border: 1.5px solid var(--surface-2);
+      background: var(--surface);
+      color: var(--muted);
+      font-size: 18px;
+      cursor: pointer;
+      transition: all 0.18s ease;
+      flex-shrink: 0;
+      line-height: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .btn-save:hover  { border-color: var(--gold); color: var(--gold); background: var(--surface-2); }
+    .btn-save.saved  { border-color: var(--gold); color: var(--gold); background: rgba(232,146,10,0.08); }
+
+    /* ── PLACES DRAWER ───────────────────────── */
+    .drawer-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.55);
+      z-index: 100;
+      opacity: 0;
+      transition: opacity 0.25s ease;
+      pointer-events: none;
+    }
+    .drawer-overlay.open { opacity: 1; pointer-events: all; }
+
+    .drawer {
+      position: fixed;
+      left: 0; right: 0; bottom: 0;
+      max-width: 480px;
+      margin: 0 auto;
+      background: var(--surface);
+      border-radius: 24px 24px 0 0;
+      border: 1px solid var(--surface-2);
+      border-bottom: none;
+      z-index: 101;
+      transform: translateY(100%);
+      transition: transform 0.3s cubic-bezier(0.34, 1.1, 0.64, 1);
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .drawer.open { transform: translateY(0); }
+
+    .drawer-handle {
+      width: 36px; height: 4px;
+      background: var(--surface-2);
+      border-radius: 2px;
+      margin: 14px auto 0;
+      flex-shrink: 0;
+    }
+
+    .drawer-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 22px 12px;
+      flex-shrink: 0;
+    }
+
+    .drawer-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--cream);
+    }
+
+    .btn-drawer-close {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      border: none;
+      background: var(--surface-2);
+      color: var(--muted);
+      font-size: 16px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.15s;
+    }
+    .btn-drawer-close:hover { background: var(--muted); color: var(--cream); }
+
+    .drawer-body {
+      overflow-y: auto;
+      flex: 1;
+      padding: 0 22px 32px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* Profile section */
+    .profile-section {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .section-label {
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .profile-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .profile-avatar {
+      width: 44px; height: 44px;
+      border-radius: 50%;
+      background: var(--surface-2);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px;
+      flex-shrink: 0;
+    }
+
+    .profile-name-wrap {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .profile-name-display {
+      font-size: 15px;
+      font-weight: 500;
+      color: var(--cream);
+    }
+
+    .profile-name-hint {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .profile-edit-form {
+      display: flex;
+      gap: 8px;
+    }
+
+    .profile-name-input {
+      flex: 1;
+      padding: 10px 14px;
+      border-radius: 12px;
+      border: 1.5px solid var(--surface-2);
+      background: var(--bg);
+      color: var(--cream);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .profile-name-input:focus { border-color: var(--gold); }
+    .profile-name-input::placeholder { color: var(--muted); }
+
+    .btn-save-name {
+      padding: 10px 16px;
+      border-radius: 12px;
+      border: none;
+      background: var(--gold);
+      color: var(--bg);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .btn-save-name:hover { background: #FFB800; }
+
+    .btn-edit-profile {
+      padding: 6px 12px;
+      border-radius: 10px;
+      border: 1.5px solid var(--surface-2);
+      background: transparent;
+      color: var(--muted);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn-edit-profile:hover { border-color: var(--muted); color: var(--cream); }
+
+    /* Saved places list */
+    .saved-section {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .saved-empty {
+      text-align: center;
+      padding: 28px 0 12px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .saved-place-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 16px;
+      border-radius: 16px;
+      background: var(--surface-2);
+      border: 1px solid transparent;
+      transition: border-color 0.15s;
+    }
+    .saved-place-item:hover { border-color: var(--surface-2); }
+
+    .saved-place-icon {
+      font-size: 22px;
+      flex-shrink: 0;
+      width: 36px; height: 36px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 10px;
+      background: var(--surface);
+    }
+
+    .saved-place-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .saved-place-name {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--cream);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .saved-place-meta {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    .saved-place-actions {
+      display: flex;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .btn-saved-map {
+      width: 32px; height: 32px;
+      border-radius: 9px;
+      border: none;
+      background: var(--surface);
+      color: var(--muted);
+      font-size: 14px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.15s;
+    }
+    .btn-saved-map:hover { background: var(--gold); color: var(--bg); }
+
+    .btn-saved-remove {
+      width: 32px; height: 32px;
+      border-radius: 9px;
+      border: none;
+      background: var(--surface);
+      color: var(--muted);
+      font-size: 14px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.15s;
+    }
+    .btn-saved-remove:hover { background: rgba(255,80,80,0.12); color: #ff5050; }
+
+    /* ── OFFLINE BANNER ──────────────────────────────── */
+    .offline-banner {
+      position: fixed;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: #1a1a1a;
+      color: var(--cream);
+      font-size: 13px;
+      font-weight: 500;
+      padding: 10px 18px;
+      border-radius: 100px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      z-index: 9999;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+      transition: transform 0.3s ease, opacity 0.3s ease;
+      opacity: 0;
+      pointer-events: none;
+    }
+    .offline-banner.visible {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+    .offline-banner-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #ff5050;
+      flex-shrink: 0;
+    }
+    .offline-banner.online .offline-banner-dot { background: #4caf50; }
+  </style>
 </head>
 <body>
 
@@ -41,7 +886,7 @@
         <div class="location-dot" id="locationDot"></div>
         <span id="locationText">Locating you…</span>
       </div>
-      <button class="btn-profile" id="profileBtn" title="My places &amp; profile">
+      <button class="btn-profile" id="profileBtn" onclick="openPlacesPanel()" title="My places &amp; profile">
         👤
         <span class="saved-dot"></span>
       </button>
@@ -50,15 +895,15 @@
 
   <!-- Category buttons — always visible -->
   <div class="categories">
-    <button class="cat-btn" data-cat="do">
+    <button class="cat-btn" data-cat="do" onclick="toggleCategory('do')">
       <span class="icon">🎯</span>
       <span>Do</span>
     </button>
-    <button class="cat-btn" data-cat="eat">
+    <button class="cat-btn" data-cat="eat" onclick="toggleCategory('eat')">
       <span class="icon">🍽️</span>
       <span>Eat</span>
     </button>
-    <button class="cat-btn" data-cat="see">
+    <button class="cat-btn" data-cat="see" onclick="toggleCategory('see')">
       <span class="icon">👁️</span>
       <span>See</span>
     </button>
@@ -66,7 +911,7 @@
 
   <!-- Filters -->
   <div class="filter-row">
-    <button class="toggle-pill" id="openNowBtn">
+    <button class="toggle-pill" id="openNowBtn" onclick="toggleOpenNow()">
       <span class="pill-dot"></span>
       Open now
     </button>
@@ -93,17 +938,17 @@
   <!-- Actions -->
   <div class="actions">
     <div class="btn-row">
-      <button class="btn-go" id="findBtn">
+      <button class="btn-go" id="findBtn" onclick="handleFindBtn()">
         Find Something →
       </button>
-      <button class="btn-save hidden" id="saveBtn" title="Save this place">
+      <button class="btn-save hidden" id="saveBtn" onclick="toggleSavePlace()" title="Save this place">
         ♡
       </button>
-      <button class="btn-share hidden" id="shareBtn" title="Send this place to a friend">
+      <button class="btn-share hidden" id="shareBtn" onclick="sharePlace()" title="Send this place to a friend">
         ↗
       </button>
     </div>
-    <button class="btn-nah hidden" id="nahBtn">
+    <button class="btn-nah hidden" id="nahBtn" onclick="nextSuggestion()">
       Nah, what else →
     </button>
     <div class="nearby-count hidden" id="nearbyCount"></div>
@@ -112,21 +957,853 @@
 </div>
 
 <!-- Places & Profile drawer -->
-<div class="drawer-overlay" id="drawerOverlay"></div>
+<div class="drawer-overlay" id="drawerOverlay" onclick="closePlacesPanel()"></div>
 <div class="drawer" id="placesDrawer">
   <div class="drawer-handle"></div>
   <div class="drawer-header">
     <div class="drawer-title">My Places</div>
-    <button class="btn-drawer-close">✕</button>
+    <button class="btn-drawer-close" onclick="closePlacesPanel()">✕</button>
   </div>
   <div class="drawer-body" id="drawerBody">
     <!-- rendered by JS -->
   </div>
 </div>
-<script src="/config.js"></script>
+<script src="config.js"></script>
 <script>
   window.PLACES_API_URL = 'https://unko-1euk.onrender.com';
+
+  // ─────────────────────────────────────────────────────────
+  // ANALYTICS — baseline product health instrumentation
+  // ─────────────────────────────────────────────────────────
+  function track(event, props) {
+    const payload = { event, ts: Date.now(), ...props };
+    // eslint-disable-next-line no-console
+    console.info('[track]', payload);
+    // To connect a real analytics backend, replace or extend below:
+    // window.analytics?.track(event, props);
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // UTILS
+  // ─────────────────────────────────────────────────────────
+  function escapeHtml(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // PROFILE & SAVED PLACES — persistent via localStorage
+  // ─────────────────────────────────────────────────────────
+  const STORAGE_PROFILE   = 'unko_profile';
+  const STORAGE_SAVED     = 'unko_saved_places';
+  const STORAGE_SEEN_IDS  = 'unko_seen_ids';
+
+  function loadProfile() {
+    try { return JSON.parse(localStorage.getItem(STORAGE_PROFILE)) || { name: '', email: '' }; }
+    catch { return { name: '', email: '' }; }
+  }
+
+  function persistProfile(profile) {
+    localStorage.setItem(STORAGE_PROFILE, JSON.stringify(profile));
+  }
+
+  function loadSavedPlaces() {
+    try { return JSON.parse(localStorage.getItem(STORAGE_SAVED)) || []; }
+    catch { return []; }
+  }
+
+  function persistSavedPlaces(places) {
+    localStorage.setItem(STORAGE_SAVED, JSON.stringify(places));
+  }
+
+  function loadSeenIds() {
+    try { return new Set(JSON.parse(localStorage.getItem(STORAGE_SEEN_IDS)) || []); }
+    catch { return new Set(); }
+  }
+
+  function persistSeenIds(seenSet) {
+    localStorage.setItem(STORAGE_SEEN_IDS, JSON.stringify([...seenSet]));
+  }
+
+  function isSaved(id) {
+    return savedPlaces.some(p => p.id === id);
+  }
+
+  function toggleSavePlace() {
+    const s = state.pool[state.index];
+    if (!s) return;
+
+    if (isSaved(s.id)) {
+      savedPlaces = savedPlaces.filter(p => p.id !== s.id);
+      track('place_unsaved', { category: s.cat });
+    } else {
+      savedPlaces = [{ id: s.id, name: s.name, cat: s.cat, type: s.type,
+                       lat: s.lat, lon: s.lon, address: s.address,
+                       savedAt: Date.now() }, ...savedPlaces];
+      track('place_saved', { category: s.cat });
+    }
+    persistSavedPlaces(savedPlaces);
+    updateSaveBtn(s.id);
+    updateProfileBtnBadge();
+  }
+
+  function updateSaveBtn(id) {
+    const btn = document.getElementById('saveBtn');
+    if (!btn) return;
+    const saved = isSaved(id);
+    btn.innerHTML = saved ? '♥' : '♡';
+    btn.classList.toggle('saved', saved);
+    btn.title = saved ? 'Remove from saved places' : 'Save this place';
+  }
+
+  function updateProfileBtnBadge() {
+    const btn = document.getElementById('profileBtn');
+    if (btn) btn.classList.toggle('has-saves', savedPlaces.length > 0);
+  }
+
+  // ─── Drawer ───────────────────────────────────────────────
+  function openPlacesPanel() {
+    renderDrawer();
+    document.getElementById('drawerOverlay').classList.add('open');
+    document.getElementById('placesDrawer').classList.add('open');
+    track('places_panel_opened', { savedCount: savedPlaces.length });
+  }
+
+  function closePlacesPanel() {
+    document.getElementById('drawerOverlay').classList.remove('open');
+    document.getElementById('placesDrawer').classList.remove('open');
+  }
+
+  function renderDrawer() {
+    const profile = loadProfile();
+    const body = document.getElementById('drawerBody');
+
+    const savedHtml = savedPlaces.length === 0
+      ? `<div class="saved-empty">No saved places yet.<br>Tap ♡ on a suggestion to save it here.</div>`
+      : savedPlaces.map(p => {
+          const emoji = catEmoji[p.cat] || '📍';
+          const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.name)}+${p.lat},${p.lon}`;
+          return `
+            <div class="saved-place-item" id="saved-${p.id}">
+              <div class="saved-place-icon">${emoji}</div>
+              <div class="saved-place-info">
+                <div class="saved-place-name">${p.name}</div>
+                <div class="saved-place-meta">${p.type}${p.address ? ' · ' + p.address : ''}</div>
+              </div>
+              <div class="saved-place-actions">
+                <button class="btn-saved-map" onclick="window.open('${mapsUrl}','_blank')" title="Open in Maps">🗺️</button>
+                <button class="btn-saved-remove" onclick="removeSavedPlace('${p.id}')" title="Remove">✕</button>
+              </div>
+            </div>`;
+        }).join('');
+
+    const profileName  = profile.name  || '';
+    const profileEmail = profile.email || '';
+    const safeName  = escapeHtml(profileName);
+    const safeEmail = escapeHtml(profileEmail);
+    body.innerHTML = `
+      <div class="profile-section">
+        <div class="section-label">Profile</div>
+        <div class="profile-row" id="profileDisplay">
+          <div class="profile-avatar">🧭</div>
+          <div class="profile-name-wrap">
+            <div class="profile-name-display">${safeName || 'Anonymous explorer'}</div>
+            <div class="profile-name-hint">${safeEmail || (safeName ? 'Your display name' : 'Add your name &amp; email')}</div>
+          </div>
+          <button class="btn-edit-profile" onclick="showProfileEditForm()">Edit</button>
+        </div>
+        <div class="profile-edit-form hidden" id="profileEditForm">
+          <input class="profile-name-input" id="profileNameInput" type="text"
+            placeholder="Your name" maxlength="32" value="${safeName}"
+            onkeydown="if(event.key==='Enter') saveProfileName()">
+          <input class="profile-name-input" id="profileEmailInput" type="email"
+            placeholder="Your email (optional)" maxlength="128" value="${safeEmail}"
+            onkeydown="if(event.key==='Enter') saveProfileName()">
+          <button class="btn-save-name" onclick="saveProfileName()">Save →</button>
+        </div>
+      </div>
+      <div class="saved-section">
+        <div class="section-label">Saved places (${savedPlaces.length})</div>
+        ${savedHtml}
+      </div>
+    `;
+  }
+
+  function showProfileEditForm() {
+    document.getElementById('profileDisplay').classList.add('hidden');
+    document.getElementById('profileEditForm').classList.remove('hidden');
+    document.getElementById('profileNameInput').focus();
+  }
+
+  function saveProfileName() {
+    const nameInput  = document.getElementById('profileNameInput');
+    const emailInput = document.getElementById('profileEmailInput');
+
+    // Sanitize: strip HTML tags and enforce max lengths
+    const name  = (nameInput  ? nameInput.value.trim()  : '').replace(/<[^>]*>/g, '').slice(0, 32);
+    const email = (emailInput ? emailInput.value.trim() : '').replace(/<[^>]*>/g, '').slice(0, 128);
+
+    // Validate email format if provided
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      if (emailInput) {
+        emailInput.setCustomValidity('Please enter a valid email address');
+        emailInput.reportValidity();
+      }
+      return;
+    }
+    if (emailInput) emailInput.setCustomValidity('');
+
+    const profile = loadProfile();
+    profile.name  = name;
+    profile.email = email;
+    persistProfile(profile);
+    track('profile_saved', { hasEmail: !!email });
+    renderDrawer();
+  }
+
+  function removeSavedPlace(id) {
+    savedPlaces = savedPlaces.filter(p => p.id !== id);
+    persistSavedPlaces(savedPlaces);
+    updateProfileBtnBadge();
+    // Update save button if this is the currently shown suggestion
+    const current = state.pool[state.index];
+    if (current && current.id === id) updateSaveBtn(id);
+    renderDrawer();
+    track('place_removed_from_list');
+  }
+
+  // Init persistent data
+  let savedPlaces = loadSavedPlaces();
+
+  // ─────────────────────────────────────────────────────────
+  // STATE
+  // ─────────────────────────────────────────────────────────
+  const state = {
+    lat: null,
+    lon: null,
+    locationReady: false,
+    activeCategory: null,   // null | 'do' | 'eat' | 'see'
+    openNow: false,         // filter to currently open places
+    walkingOnly: false,     // filter to places within walking distance (≤1500m)
+    pool: [],               // normalized suggestion objects
+    index: 0,
+    browsing: false,        // true once first results are shown
+    loading: false,
+    seenIds: loadSeenIds()  // IDs of suggestions already shown — persisted across sessions
+  };
+
+  // ─────────────────────────────────────────────────────────
+  // OPEN NOW TOGGLE
+  // ─────────────────────────────────────────────────────────
+  function toggleOpenNow() {
+    state.openNow = !state.openNow;
+    document.getElementById('openNowBtn').classList.toggle('active', state.openNow);
+    track('open_now_toggled', { enabled: state.openNow });
+
+    if (state.browsing) {
+      state.pool  = [];
+      state.index = 0;
+      fetchSuggestions();
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // WALKING DISTANCE TOGGLE
+  // ─────────────────────────────────────────────────────────
+  const WALKING_DISTANCE_M = 1500;
+
+  function toggleWalkingOnly() {
+    state.walkingOnly = !state.walkingOnly;
+    document.getElementById('walkingOnlyBtn').classList.toggle('active', state.walkingOnly);
+    track('walking_only_toggled', { enabled: state.walkingOnly });
+
+    if (state.browsing) {
+      state.pool  = [];
+      state.index = 0;
+      fetchSuggestions();
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // GEOLOCATION
+  // ─────────────────────────────────────────────────────────
+  function initLocation() {
+    if (!navigator.geolocation) {
+      setLocationLabel('Location unavailable', false);
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        state.lat = pos.coords.latitude;
+        state.lon = pos.coords.longitude;
+        state.locationReady = true;
+        document.getElementById('locationDot').classList.add('active');
+        setLocationLabel('Location found', true);
+        track('location_granted');
+
+        // Try to get a human-readable city name
+        try {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${state.lat}&lon=${state.lon}&zoom=12`
+          );
+          const data = await res.json();
+          const city = data.address?.city
+            || data.address?.town
+            || data.address?.village
+            || data.address?.county;
+          if (city) setLocationLabel(city, true);
+        } catch { /* non-critical, silently ignore */ }
+      },
+      (err) => {
+        setLocationLabel('Enable location', false);
+        const isDenied = err && err.code === 1; // PERMISSION_DENIED
+        const msg = isDenied
+          ? 'Location access was denied. Allow it in your browser settings, then tap Retry.'
+          : 'Could not get your location. Check your connection or browser settings, then tap Retry.';
+        setButtons('error');
+        showZeroState('location', msg, 'Retry Location →', initLocation);
+        track('location_denied', { code: err ? err.code : null });
+      },
+      { enableHighAccuracy: false, timeout: 12000 }
+    );
+  }
+
+  function setLocationLabel(text, active) {
+    document.getElementById('locationText').textContent = text;
+    document.getElementById('locationDot').classList.toggle('active', active);
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // CATEGORY TOGGLE
+  // ─────────────────────────────────────────────────────────
+  function toggleCategory(cat) {
+    const btn = document.querySelector(`[data-cat="${cat}"]`);
+    const alreadyActive = state.activeCategory === cat;
+
+    // Deselect all first
+    document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+
+    if (alreadyActive) {
+      state.activeCategory = null;
+    } else {
+      state.activeCategory = cat;
+      btn.classList.add('active');
+    }
+
+    track('category_toggled', { category: state.activeCategory });
+
+    // If already browsing, reset pool and re-fetch for the new filter
+    if (state.browsing) {
+      state.pool  = [];
+      state.index = 0;
+      fetchSuggestions();
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // FOURSQUARE PLACES API v3
+  // Requests are routed through the places-api-service backend
+  // when window.PLACES_API_URL is set, keeping the API key
+  // server-side. Falls back to direct Foursquare calls when
+  // window.FOURSQUARE_API_KEY is available (local dev).
+  // ─────────────────────────────────────────────────────────
+  const FSQ_ENDPOINT   = 'https://api.foursquare.com/v3/places/search';
+  const RADII          = { eat: 1500, see: 2500, do: 3000 };
+  const FSQ_CATEGORIES = { eat: '13000', see: '16000', do: '10000,18000' };
+
+  async function fetchCategory(cat) {
+    const backendUrl = window.PLACES_API_URL;
+
+    let res;
+    if (backendUrl) {
+      // Route through backend proxy — API key stays server-side
+      const url = new URL('/places/search', backendUrl);
+      url.searchParams.set('ll', `${state.lat},${state.lon}`);
+      url.searchParams.set('cat', cat);
+      if (state.openNow) url.searchParams.set('open_now', 'true');
+      res = await fetch(url.toString(), { headers: { 'Accept': 'application/json' } });
+      if (!res.ok) {
+        if (res.status === 429) throw new Error('Places API rate limit reached. Please wait a moment and try again.');
+        if (res.status >= 500) throw new Error(`Places service is temporarily unavailable (${res.status}). Please try again shortly.`);
+        throw new Error(`Places API error: ${res.status}`);
+      }
+    } else {
+      // Direct Foursquare call for local development
+      const apiKey = window.FOURSQUARE_API_KEY;
+      if (!apiKey) throw new Error('Neither PLACES_API_URL nor FOURSQUARE_API_KEY is set');
+
+      const url = new URL(FSQ_ENDPOINT);
+      url.searchParams.set('ll', `${state.lat},${state.lon}`);
+      url.searchParams.set('categories', FSQ_CATEGORIES[cat]);
+      url.searchParams.set('radius', RADII[cat]);
+      url.searchParams.set('limit', '50');
+      url.searchParams.set('fields', 'fsq_id,name,categories,geocodes,location,hours');
+      if (state.openNow) url.searchParams.set('open_now', 'true');
+      res = await fetch(url.toString(), {
+        headers: { 'Authorization': `Bearer ${apiKey}`, 'Accept': 'application/json' }
+      });
+      if (!res.ok) {
+        if (res.status === 429) throw new Error('Places API rate limit reached. Please wait a moment and try again.');
+        if (res.status >= 500) throw new Error(`Places service is temporarily unavailable (${res.status}). Please try again shortly.`);
+        throw new Error(`Foursquare API error: ${res.status}`);
+      }
+    }
+
+    const data = await res.json();
+
+    return (data.results || [])
+      .filter(p => p.name && p.geocodes?.main)
+      .map(p => ({
+        id:      p.fsq_id,
+        name:    p.name,
+        cat,
+        type:    getTypeLabel(cat, p.categories),
+        lat:     p.geocodes.main.latitude,
+        lon:     p.geocodes.main.longitude,
+        address: buildAddress(p.location),
+        hours:   p.hours ?? null,
+        detail:  null
+      }));
+  }
+
+  async function fetchSuggestions() {
+    if (!state.locationReady) {
+      setButtons('error');
+      showZeroState('location', 'Still waiting for your location. Please allow location access and try again.', 'Retry Location →', initLocation);
+      return;
+    }
+    if (state.loading) return;
+    state.loading = true;
+
+    showLoading();
+    track('search_started', { category: state.activeCategory });
+
+    try {
+      const cats = state.activeCategory
+        ? [state.activeCategory]
+        : ['eat', 'do', 'see'];
+
+      const results = await Promise.all(cats.map(fetchCategory));
+
+      let pool;
+      if (cats.length === 1) {
+        pool = shuffle(results[0]);
+      } else {
+        // Interleave categories so they alternate, then shuffle within groups
+        pool = interleave(
+          shuffle(results[0]),
+          shuffle(results[1]),
+          shuffle(results[2])
+        );
+      }
+
+      // Filter to walking distance only if enabled
+      if (state.walkingOnly) {
+        pool = pool.filter(el => haversineMeters(state.lat, state.lon, el.lat, el.lon) <= WALKING_DISTANCE_M);
+      }
+
+      // Filter out already-seen suggestions
+      const unfilteredCount = pool.length;
+      pool = pool.filter(el => !state.seenIds.has(el.id));
+
+      if (pool.length === 0) {
+        if (unfilteredCount > 0) {
+          // All results have been seen — clear seenIds and cycle through again
+          state.seenIds.clear();
+          persistSeenIds(state.seenIds);
+          state.loading = false;
+          fetchSuggestions();
+          return;
+        }
+        setButtons('error');
+        const emptyMsg = state.openNow && state.walkingOnly
+          ? "Nothing open within walking distance right now. Try turning off Open now or Walking distance filters."
+          : state.openNow
+          ? "Nothing open nearby right now. Try turning off the Open now filter, or check back later."
+          : state.walkingOnly
+          ? "Nothing within walking distance. Try turning off the Walking distance filter to see more."
+          : "Try a different category, or check back when you're somewhere with more going on.";
+        showZeroState('empty', emptyMsg);
+        track('search_empty', { category: state.activeCategory, openNow: state.openNow });
+        state.loading = false;
+        return;
+      }
+
+      state.pool    = pool;
+      state.index   = 0;
+      state.browsing = true;
+      state.loading  = false;
+
+      track('search_succeeded', { category: state.activeCategory, resultCount: pool.length });
+      showSuggestion();
+
+    } catch (err) {
+      console.error(err);
+      state.loading = false;
+      track('search_failed', { category: state.activeCategory, error: err.message, offline: !navigator.onLine });
+      const errMsg = navigator.onLine
+        ? 'Could not load nearby places. Check your connection and try again.'
+        : 'You\'re offline. Connect to the internet to discover new places.';
+      showError(errMsg, 'Try Again →', fetchSuggestions);
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // UTILITY HELPERS
+  // ─────────────────────────────────────────────────────────
+  function getTypeLabel(cat, categories) {
+    if (categories && categories.length > 0) return categories[0].short_name || categories[0].name;
+    return cat === 'eat' ? 'Restaurant' : cat === 'see' ? 'Landmark' : 'Activity';
+  }
+
+  function buildAddress(location) {
+    if (!location) return null;
+    return location.address || location.formatted_address || null;
+  }
+
+  function haversineMeters(lat1, lon1, lat2, lon2) {
+    const R  = 6371000;
+    const r  = Math.PI / 180;
+    const dL = (lat2 - lat1) * r;
+    const dO = (lon2 - lon1) * r;
+    const a  = Math.sin(dL/2)**2 + Math.cos(lat1*r) * Math.cos(lat2*r) * Math.sin(dO/2)**2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  }
+
+  function formatDist(m) {
+    return m < 1000 ? `${Math.round(m / 10) * 10}m` : `${(m / 1000).toFixed(1)}km`;
+  }
+
+  function shuffle(arr) {
+    const a = [...arr];
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  function interleave(...arrays) {
+    // Weight proportionally by array length so larger categories appear more
+    // frequently throughout the pool, not just at the end after smaller ones
+    // are exhausted (fixes uneven early-pool representation).
+    const tagged = arrays.flatMap((arr, catIdx) =>
+      arr.map((item, i) => ({ item, sort: (i + 0.5) / arr.length, catIdx }))
+    );
+    tagged.sort((a, b) => a.sort - b.sort || a.catIdx - b.catIdx);
+    return tagged.map(t => t.item);
+  }
+
+  const catEmoji  = { do: '🎯', eat: '🍽️', see: '👁️' };
+  const catColors = { do: '#1A6B72', eat: '#D45A2A', see: '#5B3E8A' };
+
+  // ─────────────────────────────────────────────────────────
+  // UI RENDERING
+  // ─────────────────────────────────────────────────────────
+  function showLoading() {
+    setButtons('loading');
+    document.getElementById('cardArea').innerHTML = `
+      <div class="loading-card">
+        <div class="spinner"></div>
+        <div class="loading-msg">Finding what's nearby…</div>
+      </div>`;
+  }
+
+  // variant: 'start' | 'location' | 'empty' | 'error'
+  const ZERO_STATE_META = {
+    start:    { icon: '🧭', title: 'What\'s your next adventure?', rings: true  },
+    location: { icon: '📍', title: 'Location needed',              rings: false },
+    empty:    { icon: '🔍', title: 'Nothing found nearby',         rings: false },
+    error:    { icon: '⚡', title: 'Something went wrong',         rings: false },
+  };
+
+  function showZeroState(variant, body, actionLabel, actionFn) {
+    const meta = ZERO_STATE_META[variant] || ZERO_STATE_META.error;
+    const actionHtml = actionLabel
+      ? `<button id="errorActionBtn" class="btn-go" style="margin-top:4px;max-width:220px">${actionLabel}</button>`
+      : '';
+    document.getElementById('cardArea').innerHTML = `
+      <div class="zero-state" data-variant="${variant}">
+        <div class="zero-icon-wrap">
+          <div class="zero-ring"></div>
+          <div class="zero-ring"></div>
+          <div class="zero-ring"></div>
+          <span class="zero-icon">${meta.icon}</span>
+        </div>
+        <div class="zero-title">${meta.title}</div>
+        <div class="zero-body">${body}</div>
+        ${actionHtml}
+      </div>`;
+    if (actionLabel && actionFn) {
+      document.getElementById('errorActionBtn').addEventListener('click', actionFn);
+    }
+  }
+
+  function showError(msg, actionLabel, actionFn) {
+    setButtons('error');
+    showZeroState('error', msg, actionLabel, actionFn);
+  }
+
+  function showSuggestion() {
+    const s = state.pool[state.index];
+    if (!s) {
+      // Pool exhausted — clear seenIds so the user can cycle through again
+      state.seenIds.clear();
+      persistSeenIds(state.seenIds);
+      state.pool  = [];
+      state.index = 0;
+      fetchSuggestions();
+      return;
+    }
+
+    // Skip malformed suggestion objects that are missing required properties
+    const isValid = typeof s.name === 'string' && s.name.trim() !== '' &&
+                    typeof s.lat  === 'number'  && isFinite(s.lat) &&
+                    typeof s.lon  === 'number'  && isFinite(s.lon) &&
+                    typeof s.cat  === 'string'  && s.cat in catColors;
+
+    if (!isValid) {
+      state.index++;
+      showSuggestion();
+      return;
+    }
+
+    try {
+    const dist    = haversineMeters(state.lat, state.lon, s.lat, s.lon);
+    const detail  = s.detail ? ` · ${s.detail}` : '';
+    const addrLine = s.address
+      ? `<div class="card-address">📍 ${s.address}</div>`
+      : '';
+    const hoursLine = (() => {
+      const h = s.hours;
+      if (!h) return '';
+      const today = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+      const todayEntry = Array.isArray(h.display) ? h.display.find(d => d.startsWith(today)) : null;
+      const todayHours = todayEntry ? todayEntry.replace(`${today} `, '') : '';
+      if (h.open_now === true) {
+        return `<div class="card-hours"><span class="hours-open">Open now</span>${todayHours ? `<span>· ${todayHours}</span>` : ''}</div>`;
+      } else if (h.open_now === false) {
+        return `<div class="card-hours"><span class="hours-closed">Closed</span>${todayHours ? `<span>· ${todayHours}</span>` : ''}</div>`;
+      }
+      return todayHours ? `<div class="card-hours"><span>${todayHours}</span></div>` : '';
+    })();
+
+    const card = document.createElement('div');
+    card.className = 'suggestion-card';
+    card.innerHTML = `
+      <div class="card-glow" style="background: ${catColors[s.cat]}"></div>
+      <span class="card-badge badge-${s.cat}">${catEmoji[s.cat]} ${s.type}${detail}</span>
+      <div class="card-name">${s.name}</div>
+      <div class="card-meta">
+        <span>📏 ${formatDist(dist)} away</span>
+      </div>
+      ${addrLine}
+      ${hoursLine}
+    `;
+
+    const area     = document.getElementById('cardArea');
+    const existing = area.querySelector('.suggestion-card');
+
+    if (existing) {
+      existing.classList.add('card-exit');
+      setTimeout(() => {
+        area.innerHTML = '';
+        area.appendChild(card);
+      }
+
+      const remaining = state.pool.length - state.index - 1;
+      setButtons('browsing', remaining);
+      updateSaveBtn(s.id);
+      track('suggestion_viewed', { category: s.cat, position: state.index, remaining });
+    } catch (err) {
+      console.error('showSuggestion render error:', err);
+      state.index++;
+      if (state.index < state.pool.length) {
+        showSuggestion();
+      } else {
+        showError(
+          'Could not display any suggestions nearby. Try refreshing to search again.',
+          'Try Again →',
+          fetchSuggestions
+        );
+      }
+    }
+  }
+
+  function setButtons(mode, remaining = 0) {
+    const findBtn  = document.getElementById('findBtn');
+    const saveBtn  = document.getElementById('saveBtn');
+    const shareBtn = document.getElementById('shareBtn');
+    const nahBtn   = document.getElementById('nahBtn');
+    const counter  = document.getElementById('nearbyCount');
+
+    findBtn.disabled = false;
+
+    if (mode === 'loading') {
+      findBtn.classList.add('hidden');
+      saveBtn.classList.add('hidden');
+      shareBtn.classList.add('hidden');
+      nahBtn.classList.add('hidden');
+      counter.classList.add('hidden');
+
+    } else if (mode === 'error') {
+      findBtn.textContent = 'Try Again ↻';
+      findBtn.onclick = handleFindBtn;
+      findBtn.classList.remove('hidden');
+      saveBtn.classList.add('hidden');
+      shareBtn.classList.add('hidden');
+      nahBtn.classList.add('hidden');
+      counter.classList.add('hidden');
+
+    } else if (mode === 'browsing') {
+      findBtn.textContent = "Let's go →";
+      findBtn.onclick = letsGo;
+      findBtn.classList.remove('hidden');
+      saveBtn.classList.remove('hidden');
+      if (navigator.share || navigator.clipboard) shareBtn.classList.remove('hidden');
+      nahBtn.textContent = 'Nah, what else →';
+      nahBtn.onclick = nextSuggestion;
+      nahBtn.classList.remove('hidden');
+      counter.classList.remove('hidden');
+      counter.textContent = remaining > 0 ? `${remaining} more nearby` : 'Last one nearby — will refresh';
+
+    } else if (mode === 'confirming') {
+      findBtn.textContent = 'Yes, take me there →';
+      findBtn.onclick = confirmGo;
+      findBtn.classList.remove('hidden');
+      saveBtn.classList.add('hidden');
+      shareBtn.classList.add('hidden');
+      nahBtn.textContent = 'Nah, go back';
+      nahBtn.onclick = cancelGo;
+      nahBtn.classList.remove('hidden');
+      counter.classList.add('hidden');
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // USER ACTIONS
+  // ─────────────────────────────────────────────────────────
+  function handleFindBtn() {
+    if (state.browsing && state.pool.length > 0) {
+      showSuggestion(); // show current suggestion again (after error)
+    } else {
+      fetchSuggestions();
+    }
+  }
+
+  function nextSuggestion() {
+    const current = state.pool[state.index];
+    if (current) {
+      state.seenIds.add(current.id);
+      persistSeenIds(state.seenIds);
+      track('place_skipped', { category: current.cat, position: state.index });
+    }
+    state.index++;
+    showSuggestion();
+  }
+
+  function letsGo() {
+    const s = state.pool[state.index];
+    if (!s) return;
+    track('lets_go_tapped', { category: s.cat, position: state.index });
+    setButtons('confirming');
+  }
+
+  function confirmGo() {
+    const s = state.pool[state.index];
+    if (!s) return;
+    track('navigation_opened', { category: s.cat, position: state.index });
+    const url = `https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lon}`;
+    const win = window.open(url, '_blank');
+    if (!win) {
+      showError(
+        'Your browser blocked the map from opening. Allow pop-ups for this site, then try again.',
+        'Try Again →',
+        confirmGo
+      );
+    }
+  }
+
+  function cancelGo() {
+    showSuggestion();
+  }
+
+  function sharePlace() {
+    const s = state.pool[state.index];
+    if (!s) return;
+
+    const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(s.name + ' ' + s.lat + ',' + s.lon)}`;
+    const dist    = haversineMeters(state.lat, state.lon, s.lat, s.lon);
+    const text    = `${s.name} — ${s.type}, ${formatDist(dist)} away`;
+
+    const shareMethod = navigator.share ? 'native' : 'clipboard';
+    track('place_shared', { category: s.cat, method: shareMethod });
+
+    if (navigator.share) {
+      navigator.share({ title: s.name, text, url: mapsUrl }).catch(() => {});
+    } else if (navigator.clipboard) {
+      navigator.clipboard.writeText(`${text}\n${mapsUrl}`).then(() => {
+        const btn = document.getElementById('shareBtn');
+        const prev = btn.innerHTML;
+        btn.innerHTML = '✓';
+        setTimeout(() => { btn.innerHTML = prev; }, 1500);
+      }).catch(() => {
+        const btn = document.getElementById('shareBtn');
+        if (btn) {
+          const prev = btn.innerHTML;
+          btn.innerHTML = '✕';
+          setTimeout(() => { btn.innerHTML = prev; }, 1500);
+        }
+      });
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // OFFLINE DETECTION
+  // ─────────────────────────────────────────────────────────
+  (function initOfflineBanner() {
+    const banner   = document.getElementById('offlineBanner');
+    const bannerTx = document.getElementById('offlineBannerText');
+    let hideTimer;
+
+    function showBanner(isOnline) {
+      clearTimeout(hideTimer);
+      banner.classList.toggle('online', isOnline);
+      bannerTx.textContent = isOnline ? 'Back online' : 'You\'re offline — showing cached results';
+      banner.classList.add('visible');
+      if (isOnline) {
+        hideTimer = setTimeout(() => banner.classList.remove('visible'), 3000);
+      }
+    }
+
+    window.addEventListener('offline', () => showBanner(false));
+    window.addEventListener('online',  () => showBanner(true));
+
+    // Show banner on load if already offline
+    if (!navigator.onLine) showBanner(false);
+  })();
+
+  // ─────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────
+  // SERVICE WORKER REGISTRATION
+  // ─────────────────────────────────────────────────────────
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    });
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // INIT
+  // ─────────────────────────────────────────────────────────
+  track('app_loaded');
+  updateProfileBtnBadge();
+  initLocation();
 </script>
-<script type="module" src="/js/app.js"></script>
 </body>
 </html>
