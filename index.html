@@ -17,6 +17,12 @@
 <body>
 
 <!-- Incident banner — shown until dismissed, controlled by JS below -->
+<!-- Offline indicator -->
+<div id="offlineBanner" class="offline-banner" role="status" aria-live="polite">
+  <div class="offline-banner-dot"></div>
+  <span id="offlineBannerText">You're offline</span>
+</div>
+
 <div id="incident-banner" class="incident-banner" style="display:none;" role="alert" aria-live="polite">
   <div class="incident-banner-text">
     <strong>Service disruption resolved (Apr 4–6).</strong>
@@ -63,6 +69,10 @@
     <button class="toggle-pill" id="openNowBtn">
       <span class="pill-dot"></span>
       Open now
+    </button>
+    <button class="toggle-pill" id="walkingOnlyBtn" onclick="toggleWalkingOnly()">
+      <span class="pill-dot"></span>
+      Walking distance
     </button>
   </div>
 
