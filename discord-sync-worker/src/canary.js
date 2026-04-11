@@ -4,6 +4,7 @@ const crypto = require('crypto');
 const http = require('http');
 const cron = require('node-cron');
 const pino = require('pino');
+const config = require('./config');
 
 const logger = pino();
 
@@ -19,7 +20,7 @@ function startCanary(port) {
     };
 
     const body = JSON.stringify(payload);
-    const secret = process.env.DISCORD_WEBHOOK_SECRET;
+    const secret = config.discordWebhookSecret;
 
     const hmac = crypto.createHmac('sha256', secret);
     hmac.update(body);

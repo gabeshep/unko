@@ -1,12 +1,13 @@
 'use strict';
 
 const crypto = require('crypto');
+const config = require('./config');
 const db = require('./db');
 
 async function webhookHandler(request, reply) {
   const rawBody = request.body; // Buffer, thanks to addContentTypeParser
   const signature = request.headers['x-discord-signature'] || '';
-  const secret = process.env.DISCORD_WEBHOOK_SECRET;
+  const secret = config.discordWebhookSecret;
 
   // Compute HMAC-SHA256
   const hmac = crypto.createHmac('sha256', secret);

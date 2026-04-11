@@ -13,10 +13,11 @@
 const fs   = require('fs');
 const path = require('path');
 const cron = require('node-cron');
+const config = require('./config');
 const { aggregatePeriod, checkAnomalies } = require('./aggregator');
 const db = require('./db');
 
-const REPORTS_DIR = process.env.REPORTS_DIR || path.join(__dirname, '..', 'reports');
+const REPORTS_DIR = config.reportsDir;
 
 /**
  * Generate the cost-per-success and cost-per-failure summary over a trailing

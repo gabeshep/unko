@@ -1,6 +1,7 @@
 'use strict';
 
 const fastify = require('fastify');
+const config = require('./config');
 const placesPlugin = require('./routes/places');
 
 // ---------------------------------------------------------------------------
@@ -76,19 +77,7 @@ async function main() {
 
   // CORS + rate limiting on every request
   app.addHook('onRequest', async (request, reply) => {
-    const origin = request.headers.origin;
-
-    // CORS headers — strict allowlist when configured
-    if (allowedOrigins) {
-      if (origin && allowedOrigins.has(origin)) {
-        reply.header('Access-Control-Allow-Origin', origin);
-        reply.header('Vary', 'Origin');
-      }
-      // Unlisted origins receive no Access-Control-Allow-Origin header,
-      // causing the browser to block the response.
-    } else {
-      reply.header('Access-Control-Allow-Origin', '*');
-    }
+    reply.header('Access-Control-Allow-Origin', config.corsOrigin);
     reply.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
     reply.header('Access-Control-Allow-Headers', 'Content-Type');
 
@@ -108,14 +97,13 @@ async function main() {
     }
   });
 
-  if (!process.env.FOURSQUARE_API_KEY) {
+  if (!config.foursquareApiKey) {
     app.log.warn('FOURSQUARE_API_KEY not set — /places/search will return 503 until configured');
   }
 
   app.register(placesPlugin);
 
-  const port = parseInt(process.env.PORT || '3003', 10);
-  await app.listen({ port, host: '0.0.0.0' });
+  await app.listen({ port: config.port, host: '0.0.0.0' });
 }
 
 main().catch((err) => {

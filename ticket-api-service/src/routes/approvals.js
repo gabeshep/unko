@@ -2,6 +2,7 @@
 
 const http = require('http');
 const promClient = require('prom-client');
+const config = require('../config');
 const db = require('../db');
 
 const breakGlassCounter = new promClient.Counter({
@@ -50,7 +51,7 @@ async function approvalsPlugin(fastify, _opts) {
     const dbCount = dbResult.rows[0].count;
 
     // API count via internal HTTP call to /approvals/queue
-    const port = process.env.PORT || 3002;
+    const port = config.port;
     let apiCount;
     let apiError = null;
     try {
