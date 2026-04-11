@@ -1,0 +1,96 @@
+{
+  "consumer": "suggestion-ai-ranker",
+  "provider": "places-api-service",
+  "interactions": [
+    {
+      "description": "fetches eat places by location",
+      "request": {
+        "method": "GET",
+        "path": "/places/search",
+        "query": { "ll": "35.6762,139.6503", "cat": "eat" }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "results": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required_properties": ["fsq_id", "name"],
+              "properties": {
+                "fsq_id":     { "type": "string" },
+                "name":       { "type": "string" },
+                "categories": { "type": "array" },
+                "location":   { "type": "object" }
+              }
+            }
+          }
+        }
+      },
+      "example_response": {
+        "results": [
+          {
+            "fsq_id": "abc123",
+            "name": "Ramen Shop",
+            "categories": [{ "id": 13236, "name": "Ramen Restaurant" }],
+            "geocodes": { "main": { "latitude": 35.6762, "longitude": 139.6503 } },
+            "location": {
+              "address": "1-1 Shinjuku",
+              "formatted_address": "1-1 Shinjuku, Tokyo, Japan"
+            },
+            "distance": 120
+          }
+        ]
+      }
+    },
+    {
+      "description": "fetches see places by location with open_now filter",
+      "request": {
+        "method": "GET",
+        "path": "/places/search",
+        "query": { "ll": "35.6762,139.6503", "cat": "see", "open_now": "true" }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "results": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required_properties": ["fsq_id", "name"],
+              "properties": {
+                "fsq_id":   { "type": "string" },
+                "name":     { "type": "string" },
+                "location": { "type": "object" }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "description": "returns 400 for invalid category",
+      "request": {
+        "method": "GET",
+        "path": "/places/search",
+        "query": { "ll": "35.6762,139.6503", "cat": "invalid" }
+      },
+      "response": {
+        "status": 400
+      }
+    },
+    {
+      "description": "health check returns ok",
+      "request": {
+        "method": "GET",
+        "path": "/health"
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "status": { "type": "string", "value": "ok" }
+        }
+      }
+    }
+  ]
+}
