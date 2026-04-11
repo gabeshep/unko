@@ -923,8 +923,9 @@
   // ─────────────────────────────────────────────────────────
   // PROFILE & SAVED PLACES — persistent via localStorage
   // ─────────────────────────────────────────────────────────
-  const STORAGE_PROFILE = 'unko_profile';
-  const STORAGE_SAVED   = 'unko_saved_places';
+  const STORAGE_PROFILE   = 'unko_profile';
+  const STORAGE_SAVED     = 'unko_saved_places';
+  const STORAGE_SEEN_IDS  = 'unko_seen_ids';
 
   function loadProfile() {
     try { return JSON.parse(localStorage.getItem(STORAGE_PROFILE)) || { name: '', email: '' }; }
@@ -942,6 +943,15 @@
 
   function persistSavedPlaces(places) {
     localStorage.setItem(STORAGE_SAVED, JSON.stringify(places));
+  }
+
+  function loadSeenIds() {
+    try { return new Set(JSON.parse(localStorage.getItem(STORAGE_SEEN_IDS)) || []); }
+    catch { return new Set(); }
+  }
+
+  function persistSeenIds(seenSet) {
+    localStorage.setItem(STORAGE_SEEN_IDS, JSON.stringify([...seenSet]));
   }
 
   function isSaved(id) {
@@ -1092,7 +1102,7 @@
     index: 0,
     browsing: false,        // true once first results are shown
     loading: false,
-    seenIds: new Set()      // IDs of suggestions already shown
+    seenIds: loadSeenIds()  // IDs of suggestions already shown — persisted across sessions
   };
 
   // ─────────────────────────────────────────────────────────
@@ -1279,6 +1289,7 @@
         if (unfilteredCount > 0) {
           // All results have been seen — clear seenIds and cycle through again
           state.seenIds.clear();
+          persistSeenIds(state.seenIds);
           state.loading = false;
           fetchSuggestions();
           return;
@@ -1414,6 +1425,7 @@
     if (!s) {
       // Pool exhausted — clear seenIds so the user can cycle through again
       state.seenIds.clear();
+      persistSeenIds(state.seenIds);
       state.pool  = [];
       state.index = 0;
       fetchSuggestions();
@@ -1549,6 +1561,7 @@
     const current = state.pool[state.index];
     if (current) {
       state.seenIds.add(current.id);
+      persistSeenIds(state.seenIds);
       track('place_skipped', { category: current.cat, position: state.index });
     }
     state.index++;
