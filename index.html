@@ -310,6 +310,25 @@
       margin-top: 4px;
     }
 
+    .card-hours {
+      font-size: 13px;
+      color: var(--muted);
+      margin-top: 4px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .hours-open {
+      color: #4caf7d;
+      font-weight: 600;
+    }
+
+    .hours-closed {
+      color: var(--muted);
+      font-weight: 600;
+    }
+
     /* Loading */
     .loading-card {
       width: 100%;
@@ -1236,6 +1255,7 @@
         lat:     p.geocodes.main.latitude,
         lon:     p.geocodes.main.longitude,
         address: buildAddress(p.location),
+        hours:   p.hours ?? null,
         detail:  null
       }));
   }
@@ -1438,6 +1458,19 @@
     const addrLine = s.address
       ? `<div class="card-address">📍 ${s.address}</div>`
       : '';
+    const hoursLine = (() => {
+      const h = s.hours;
+      if (!h) return '';
+      const today = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+      const todayEntry = Array.isArray(h.display) ? h.display.find(d => d.startsWith(today)) : null;
+      const todayHours = todayEntry ? todayEntry.replace(`${today} `, '') : '';
+      if (h.open_now === true) {
+        return `<div class="card-hours"><span class="hours-open">Open now</span>${todayHours ? `<span>· ${todayHours}</span>` : ''}</div>`;
+      } else if (h.open_now === false) {
+        return `<div class="card-hours"><span class="hours-closed">Closed</span>${todayHours ? `<span>· ${todayHours}</span>` : ''}</div>`;
+      }
+      return todayHours ? `<div class="card-hours"><span>${todayHours}</span></div>` : '';
+    })();
 
     const card = document.createElement('div');
     card.className = 'suggestion-card';
@@ -1449,6 +1482,7 @@
         <span>📏 ${formatDist(dist)} away</span>
       </div>
       ${addrLine}
+      ${hoursLine}
     `;
 
     const area     = document.getElementById('cardArea');
