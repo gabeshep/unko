@@ -1,0 +1,42 @@
+name: Unit Economics Nightly Report
+
+on:
+  schedule:
+    # Run at 01:00 UTC every day
+    - cron: '0 1 * * *'
+  # Allow manual trigger for testing
+  workflow_dispatch:
+
+jobs:
+  nightly-cost-report:
+    name: Aggregate Cost per Ticket (Nightly)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install cost-tracking-worker dependencies
+        working-directory: cost-tracking-worker
+        run: npm install
+
+      - name: Run nightly cost aggregation report
+        working-directory: cost-tracking-worker
+        env:
+          DATABASE_URL: ${{ secrets.COST_TRACKING_DATABASE_URL }}
+          TOKEN_COST_PER_1K: ${{ vars.TOKEN_COST_PER_1K || '0.003' }}
+          COMPUTE_COST_PER_MIN: ${{ vars.COMPUTE_COST_PER_MIN || '0.008' }}
+          ANOMALY_THRESHOLD: ${{ vars.ANOMALY_THRESHOLD || '1.5' }}
+          REPORTS_DIR: /tmp/unit-economics-reports
+        run: node src/nightly-report.js
+
+      - name: Upload CSV report as artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-economics-report-${{ github.run_id }}
+          path: /tmp/unit-economics-reports/*.csv
+          retention-days: 90
