@@ -1,4 +1,5 @@
-const CACHE_NAME = 'unko-v1';
+const CACHE_NAME     = 'unko-v2';
+const API_CACHE_NAME = 'unko-api-v1';
 
 // Core app shell assets to cache on install
 const PRECACHE_ASSETS = [
@@ -6,6 +7,9 @@ const PRECACHE_ASSETS = [
   '/index.html',
   '/manifest.json'
 ];
+
+// Backend proxy origin — cache API responses so the app works offline
+const API_ORIGIN = 'https://unko-1euk.onrender.com';
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -18,28 +22,46 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
       Promise.all(
-        keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))
+        keys
+          .filter((key) => key !== CACHE_NAME && key !== API_CACHE_NAME)
+          .map((key) => caches.delete(key))
       )
     )
   );
   self.clients.claim();
 });
 
-// Network-first strategy: serve fresh content when online, fall back to cache
 self.addEventListener('fetch', (event) => {
   const { request } = event;
 
   // Only handle GET requests
   if (request.method !== 'GET') return;
 
-  // Skip cross-origin requests (e.g. fonts, API calls)
   const url = new URL(request.url);
+
+  // API responses (cross-origin backend proxy) — network-first, cache fallback
+  if (url.origin === API_ORIGIN) {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (response.ok) {
+            const cloned = response.clone();
+            caches.open(API_CACHE_NAME).then((cache) => cache.put(request, cloned));
+          }
+          return response;
+        })
+        .catch(() => caches.match(request))
+    );
+    return;
+  }
+
+  // Skip other cross-origin requests (fonts, etc.)
   if (url.origin !== self.location.origin) return;
 
+  // Same-origin app shell — network-first, cache fallback
   event.respondWith(
     fetch(request)
       .then((response) => {
-        // Cache successful responses for the app shell
         if (response.ok) {
           const cloned = response.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(request, cloned));
